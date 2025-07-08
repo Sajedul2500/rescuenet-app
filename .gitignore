@@ -1,0 +1,7 @@
+# Project exclude paths
+/.dart_tool/
+/build/
+/build/app/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
+/build/path_provider_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
+/build/shared_preferences_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
+/build/url_launcher_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
