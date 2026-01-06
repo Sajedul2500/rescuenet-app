@@ -51,7 +51,7 @@ class _DonatePageState extends State<DonatePage> {
             Text('Select Donation Type', style: _sectionTitleStyle()),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedType,
+              initialValue: _selectedType,
               decoration: _inputDecoration(),
               items: donationTypes.map((type) {
                 return DropdownMenuItem(value: type, child: Text(type));
@@ -71,7 +71,7 @@ class _DonatePageState extends State<DonatePage> {
               Text('Payment Method', style: _sectionTitleStyle()),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedPaymentMethod,
+                initialValue: _selectedPaymentMethod,
                 decoration: _inputDecoration(),
                 items: paymentMethods.map((method) {
                   return DropdownMenuItem(value: method, child: Text(method));

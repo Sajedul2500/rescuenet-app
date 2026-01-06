@@ -107,7 +107,7 @@ class _RegistrationPageState extends State<RegistrationPage> with TickerProvider
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: DropdownButtonFormField<String>(
-        value: _controller(key).text.isEmpty ? null : _controller(key).text,
+        initialValue: _controller(key).text.isEmpty ? null : _controller(key).text,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -252,7 +252,7 @@ class _RegistrationPageState extends State<RegistrationPage> with TickerProvider
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'Registration Type',
                     border: OutlineInputBorder(),

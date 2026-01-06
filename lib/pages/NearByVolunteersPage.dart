@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class NearByVolunteersPage extends StatefulWidget {
-  NearByVolunteersPage({super.key});
+  const NearByVolunteersPage({super.key});
 
   @override
   State<NearByVolunteersPage> createState() => _NearByVolunteersPageState();
