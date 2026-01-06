@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'RegistrationStep1Page.dart';
 import 'UserDashboardPage.dart';
-import 'RegistrationPage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,11 +13,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
-  final _emailController = TextEditingController();
+  final _loginIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
-  bool _rememberMe = false;
 
   late AnimationController _formAnimationController;
   late Animation<Offset> _formSlideAnimation;
@@ -52,7 +51,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _buttonScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(
+    _buttonScaleAnimation =
+        Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(
       parent: _buttonController,
       curve: Curves.elasticOut,
     ));
@@ -62,67 +62,106 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       _buttonController.forward();
     });
 
-    _loadRememberMePreference();
+    _checkLoginSession();
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _loginIdController.dispose();
     _passwordController.dispose();
     _formAnimationController.dispose();
     _buttonController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadRememberMePreference() async {
+  Future<void> _checkLoginSession() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _rememberMe = prefs.getBool('rememberMe') ?? false;
-      if (_rememberMe) {
-        _emailController.text = prefs.getString('email') ?? '';
-        _passwordController.text = prefs.getString('password') ?? '';
-      }
-    });
-  }
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-  Future<void> _saveLoginPreference(bool rememberMe) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('rememberMe', rememberMe);
-    if (rememberMe) {
-      await prefs.setString('email', _emailController.text);
-      await prefs.setString('password', _passwordController.text);
-    } else {
-      await prefs.remove('email');
-      await prefs.remove('password');
+    if (isLoggedIn) {
+      // User is already logged in, navigate to dashboard
+      final userData = {
+        'fullName': prefs.getString('userName') ?? 'User',
+        'loginId': prefs.getString('loginId') ?? '',
+        'location': prefs.getString('userLocation') ?? 'Location not set',
+      };
+
+      // Navigate to dashboard after a short delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 700),
+              pageBuilder: (_, __, ___) =>
+                  UserDashboardPage(userData: userData),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+        }
+      });
     }
   }
 
-  void _login() {
+  Future<void> _saveLoginSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('loginId', _loginIdController.text.trim());
+    await prefs.setString(
+        'userName', 'User'); // In production, get this from API
+    await prefs.setString(
+        'userLocation', 'Location not set'); // In production, get this from API
+  }
+
+  void _login() async {
     if (_formKey.currentState!.validate()) {
-      final email = _emailController.text.trim();
+      final loginId = _loginIdController.text.trim();
       final password = _passwordController.text;
 
-      if (email == 'user@rescuenet.com' && password == 'password123') {
-        _saveLoginPreference(_rememberMe);
+      // Demo validation - accepts multiple formats
+      // In production, verify against backend API
+      bool isValidLogin = false;
 
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 700),
-            pageBuilder: (_, __, ___) => const UserDashboardPage(),
-            transitionsBuilder: (_, animation, __, child) {
-              return SlideTransition(
-                position: Tween(begin: const Offset(1, 0), end: Offset.zero)
-                    .chain(CurveTween(curve: Curves.easeOut))
-                    .animate(animation),
-                child: child,
-              );
-            },
-          ),
-        );
+      // Accept email
+      if (loginId == 'user@rescuenet.com' && password == 'password123') {
+        isValidLogin = true;
+      }
+      // Accept phone
+      else if (loginId == '01712345678' && password == 'password123') {
+        isValidLogin = true;
+      }
+      // Accept username
+      else if (loginId == 'rescueuser' && password == 'password123') {
+        isValidLogin = true;
+      }
+
+      if (isValidLogin) {
+        // Save login session
+        await _saveLoginSession();
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 700),
+              pageBuilder: (_, __, ___) =>
+                  const UserDashboardPage(userData: null),
+              transitionsBuilder: (_, animation, __, child) {
+                return SlideTransition(
+                  position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                      .chain(CurveTween(curve: Curves.easeOut))
+                      .animate(animation),
+                  child: child,
+                );
+              },
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          const SnackBar(content: Text('Invalid login ID or password')),
         );
       }
     }
@@ -135,20 +174,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         title: const Text('Forgot Password'),
         content: const Text('Please contact support to reset your password.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-        ],
-      ),
-    );
-  }
-
-  void _adminLogin() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Admin Login'),
-        content: const Text('This section is under development.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('OK')),
         ],
       ),
     );
@@ -191,21 +218,19 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           )),
                       const SizedBox(height: 30),
                       TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _loginIdController,
+                        keyboardType: TextInputType.text,
                         decoration: InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email),
+                          labelText: 'Login ID',
+                          hintText: 'Email, Phone or Username',
+                          prefixIcon: const Icon(Icons.person),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                            return 'Please enter a valid email';
+                            return 'Please enter your login ID';
                           }
                           return null;
                         },
@@ -239,18 +264,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         },
                       ),
                       const SizedBox(height: 10),
-                      CheckboxListTile(
-                        value: _rememberMe,
-                        onChanged: (value) {
-                          setState(() {
-                            _rememberMe = value ?? false;
-                          });
-                        },
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('Remember Me',
-                            style: GoogleFonts.poppins(fontSize: 14)),
-                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -296,23 +309,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               Navigator.push(
                                 context,
                                 PageRouteBuilder(
-                                  transitionDuration: const Duration(milliseconds: 500),
-                                  pageBuilder: (_, __, ___) => const RegistrationPage(),
-                                  transitionsBuilder: (_, animation, __, child) =>
-                                      FadeTransition(opacity: animation, child: child),
+                                  transitionDuration:
+                                      const Duration(milliseconds: 500),
+                                  pageBuilder: (_, __, ___) =>
+                                      const RegistrationStep1Page(),
+                                  transitionsBuilder:
+                                      (_, animation, __, child) =>
+                                          FadeTransition(
+                                              opacity: animation, child: child),
                                 ),
                               );
                             },
                             child: Text('Register',
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                                style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600)),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: _adminLogin,
-                        child: Text('Admin Login',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
                       ),
                     ],
                   ),

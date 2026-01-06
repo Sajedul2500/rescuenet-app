@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'LoginPage.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -162,8 +164,8 @@ class _SettingsPageState extends State<SettingPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text('Confirm Logout', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to logout?', style: GoogleFonts.poppins()),
         actions: [
           TextButton(
             child: const Text('Cancel'),
@@ -171,11 +173,37 @@ class _SettingsPageState extends State<SettingPage> {
           ),
           TextButton(
             child: const Text('Logout', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logged out successfully')),
-              );
+            onPressed: () async {
+              // Clear login session
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear(); // Clear all stored data
+              
+              if (context.mounted) {
+                Navigator.pop(context); // Close dialog
+                // Navigate to login page and clear all previous routes
+                Navigator.of(context).pushAndRemoveUntil(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 500),
+                    pageBuilder: (_, __, ___) => const LoginPage(),
+                    transitionsBuilder: (_, animation, __, child) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                  ),
+                  (route) => false,
+                );
+                
+                // Show success message after navigation
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logged out successfully', style: GoogleFonts.poppins()),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                });
+              }
             },
           ),
         ],
