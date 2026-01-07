@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'RegistrationStep2Page.dart';
+import '../features/registration/data/services/registration_service.dart';
+import '../features/registration/domain/models/registration_models.dart';
 
 class RegistrationStep1Page extends StatefulWidget {
   const RegistrationStep1Page({super.key});
@@ -17,10 +19,15 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final RegistrationService _registrationService = RegistrationService();
 
   String _selectedGender = 'Male';
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isSubmitting = false;
+
+  // Server-side validation errors
+  Map<String, String> _serverErrors = {};
 
   late AnimationController _formController;
   late Animation<Offset> _formSlideAnimation;
@@ -108,7 +115,11 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
     return null;
   }
 
-  void _proceedToNextStep() {
+  String? _getServerError(String field) {
+    return _serverErrors[field];
+  }
+
+  void _proceedToNextStep() async {
     if (_formKey.currentState!.validate()) {
       final validationError = _validateEmailOrMobile();
       if (validationError != null) {
@@ -118,32 +129,105 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
         return;
       }
 
-      // Collect registration data
-      final registrationData = {
-        'fullName': _fullNameController.text.trim(),
-        'gender': _selectedGender,
-        'mobile': _mobileController.text.trim(),
-        'email': _emailController.text.trim(),
-        'password': _passwordController.text,
-      };
+      setState(() {
+        _isSubmitting = true;
+        _serverErrors = {}; // Clear previous errors
+      });
 
-      // Navigate to Step 2
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, __, ___) =>
-              RegistrationStep2Page(registrationData: registrationData),
-          transitionsBuilder: (_, animation, __, child) {
-            return SlideTransition(
-              position: Tween(begin: const Offset(1, 0), end: Offset.zero)
-                  .chain(CurveTween(curve: Curves.easeOut))
-                  .animate(animation),
-              child: child,
-            );
-          },
-        ),
-      );
+      try {
+        // Prepare Step 1 data
+        final step1Data = Step1Data(
+          fullName: _fullNameController.text.trim(),
+          gender: _selectedGender, // Male, Female, Other
+          email: _emailController.text.trim().isNotEmpty
+              ? _emailController.text.trim()
+              : null, // Send null if empty, let backend handle it
+          phone: _mobileController.text.trim().isNotEmpty
+              ? _mobileController.text.trim()
+              : null, // Send null if empty
+          password: _passwordController.text,
+          passwordConfirmation: _confirmPasswordController.text,
+        );
+
+        // Submit to backend
+        final response = await _registrationService.submitStep1(step1Data);
+
+        if (!mounted) return;
+
+        if (response.success) {
+          // Success - Navigate to Step 2
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  response.message ?? 'Registration started successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Collect registration data for UI flow
+          final registrationData = {
+            'fullName': _fullNameController.text.trim(),
+            'gender': _selectedGender,
+            'mobile': _mobileController.text.trim(),
+            'email': _emailController.text.trim(),
+            'userId': response.data?.userId,
+          };
+
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 600),
+              pageBuilder: (_, __, ___) =>
+                  RegistrationStep2Page(registrationData: registrationData),
+              transitionsBuilder: (_, animation, __, child) {
+                return SlideTransition(
+                  position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                      .chain(CurveTween(curve: Curves.easeOut))
+                      .animate(animation),
+                  child: child,
+                );
+              },
+            ),
+          );
+        } else {
+          // API Error - Set server errors to display below fields
+          setState(() {
+            if (response.errors != null) {
+              response.errors!.forEach((key, value) {
+                if (value is List) {
+                  _serverErrors[key] = value.join(', ');
+                } else {
+                  _serverErrors[key] = value.toString();
+                }
+              });
+            }
+          });
+
+          // Show general error message as snackbar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ??
+                  'Registration failed. Please check the errors below.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unexpected error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
+      }
     }
   }
 
@@ -204,7 +288,19 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      errorText: _getServerError('name') ??
+                          _getServerError('full_name'),
                     ),
+                    onChanged: (value) {
+                      // Clear server error when user types
+                      if (_serverErrors.containsKey('name') ||
+                          _serverErrors.containsKey('full_name')) {
+                        setState(() {
+                          _serverErrors.remove('name');
+                          _serverErrors.remove('full_name');
+                        });
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Full Name is required';
@@ -219,13 +315,14 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
 
                   // Gender
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedGender,
+                    value: _selectedGender,
                     decoration: InputDecoration(
                       labelText: 'Gender *',
                       prefixIcon: const Icon(Icons.person_outline),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      errorText: _getServerError('gender'),
                     ),
                     items: ['Male', 'Female', 'Other']
                         .map((gender) => DropdownMenuItem(
@@ -235,7 +332,10 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() => _selectedGender = value);
+                        setState(() {
+                          _selectedGender = value;
+                          _serverErrors.remove('gender');
+                        });
                       }
                     },
                   ),
@@ -253,7 +353,18 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       helperText: 'Mobile or Email is required',
+                      errorText:
+                          _getServerError('phone') ?? _getServerError('mobile'),
                     ),
+                    onChanged: (value) {
+                      if (_serverErrors.containsKey('phone') ||
+                          _serverErrors.containsKey('mobile')) {
+                        setState(() {
+                          _serverErrors.remove('phone');
+                          _serverErrors.remove('mobile');
+                        });
+                      }
+                    },
                     validator: _validateMobile,
                   ),
                   const SizedBox(height: 16),
@@ -270,7 +381,15 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       helperText: 'Mobile or Email is required',
+                      errorText: _getServerError('email'),
                     ),
+                    onChanged: (value) {
+                      if (_serverErrors.containsKey('email')) {
+                        setState(() {
+                          _serverErrors.remove('email');
+                        });
+                      }
+                    },
                     validator: _validateEmail,
                   ),
                   const SizedBox(height: 16),
@@ -294,7 +413,15 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      errorText: _getServerError('password'),
                     ),
+                    onChanged: (value) {
+                      if (_serverErrors.containsKey('password')) {
+                        setState(() {
+                          _serverErrors.remove('password');
+                        });
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Password is required';
@@ -326,7 +453,18 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      errorText: _getServerError('password_confirmation') ??
+                          _getServerError('confirmPassword'),
                     ),
+                    onChanged: (value) {
+                      if (_serverErrors.containsKey('password_confirmation') ||
+                          _serverErrors.containsKey('confirmPassword')) {
+                        setState(() {
+                          _serverErrors.remove('password_confirmation');
+                          _serverErrors.remove('confirmPassword');
+                        });
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please confirm your password';
@@ -341,7 +479,7 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
 
                   // Next Button
                   ElevatedButton(
-                    onPressed: _proceedToNextStep,
+                    onPressed: _isSubmitting ? null : _proceedToNextStep,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD32F2F),
                       foregroundColor: Colors.white,
@@ -350,20 +488,30 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Next Step',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Next Step',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.arrow_forward),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 16),
 

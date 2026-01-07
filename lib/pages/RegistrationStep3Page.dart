@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:RescueNetApp/services/geocoding_service.dart';
 import 'UserDashboardPage.dart';
+import '../features/registration/data/services/registration_service.dart';
+import '../features/registration/domain/models/registration_models.dart';
 
 class RegistrationStep3Page extends StatefulWidget {
   final Map<String, dynamic> registrationData;
@@ -17,8 +19,14 @@ class RegistrationStep3Page extends StatefulWidget {
 
 class _RegistrationStep3PageState extends State<RegistrationStep3Page>
     with TickerProviderStateMixin {
+  final RegistrationService _registrationService = RegistrationService();
+  final _emergencyNameController = TextEditingController();
+  final _emergencyPhoneController = TextEditingController();
+  final _emergencyRelationController = TextEditingController();
+
   bool _isLocationPermissionGranted = false;
   bool _isLoadingLocation = false;
+  bool _isSubmitting = false;
   String? _currentLocation;
   double? _latitude;
   double? _longitude;
@@ -439,7 +447,7 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
     );
   }
 
-  void _completeRegistration() {
+  void _completeRegistration() async {
     if (!_isLocationPermissionGranted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -453,94 +461,142 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
       return;
     }
 
-    // Add location data to registration data
-    final finalData = {
-      ...widget.registrationData,
-      'latitude': _latitude,
-      'longitude': _longitude,
-      'location': _currentLocation,
-      'registrationCompleted': true,
-      'registrationDate': DateTime.now().toIso8601String(),
-    };
+    // Validate emergency contact fields if needed (optional based on your requirements)
+    if (_emergencyNameController.text.trim().isEmpty ||
+        _emergencyPhoneController.text.trim().isEmpty ||
+        _emergencyRelationController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please fill in emergency contact details',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
-    // Show success dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle,
-                size: 48,
-                color: Colors.green,
-              ),
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Prepare Step 3 data
+      final step3Data = Step3Data(
+        emergencyContactName: _emergencyNameController.text.trim(),
+        emergencyContactPhone: _emergencyPhoneController.text.trim(),
+        emergencyContactRelation: _emergencyRelationController.text.trim(),
+        latitude: _latitude!,
+        longitude: _longitude!,
+        location: _currentLocation,
+      );
+
+      // Submit to backend
+      final response = await _registrationService.submitStep3(step3Data);
+
+      if (!mounted) return;
+
+      if (response.success) {
+        // Save location data locally
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('latitude', _latitude!);
+        await prefs.setDouble('longitude', _longitude!);
+        await prefs.setString('userLocation', _currentLocation!);
+
+        // Show success dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    size: 48,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Registration Complete!',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Registration Complete!',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            content: Text(
+              response.message ??
+                  'Welcome to RescueNet! Your account is now ready.',
+              style: GoogleFonts.poppins(),
               textAlign: TextAlign.center,
             ),
-          ],
-        ),
-        content: Text(
-          'Welcome to RescueNet! Your account has been created successfully.',
-          style: GoogleFonts.poppins(fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Navigate to Dashboard
-                Navigator.of(context).pushAndRemoveUntil(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 700),
-                    pageBuilder: (_, __, ___) =>
-                        UserDashboardPage(userData: finalData),
-                    transitionsBuilder: (_, animation, __, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const UserDashboardPage(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  (route) => false,
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  child: Text(
+                    'Get Started',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                'Go to Dashboard',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(response.message ?? 'Failed to complete registration'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -570,6 +626,92 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Header
+                Text(
+                  'Final Step - Emergency Contact',
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Add your emergency contact and location permission',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+
+                // Emergency Contact Form
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.contact_emergency,
+                                color: Color(0xFFD32F2F)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Emergency Contact',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _emergencyNameController,
+                          decoration: InputDecoration(
+                            labelText: 'Contact Name',
+                            prefixIcon: const Icon(Icons.person_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _emergencyPhoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Contact Phone',
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _emergencyRelationController,
+                          decoration: InputDecoration(
+                            labelText: 'Relationship',
+                            prefixIcon: const Icon(Icons.family_restroom),
+                            hintText: 'e.g., Father, Mother, Spouse',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Location Permission Section Header
                 Text(
                   'Location Permission',
                   style: GoogleFonts.poppins(
@@ -740,10 +882,20 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
                 // Complete Registration Button
                 if (_isLocationPermissionGranted)
                   ElevatedButton.icon(
-                    onPressed: _completeRegistration,
-                    icon: const Icon(Icons.check_circle),
+                    onPressed: _isSubmitting ? null : _completeRegistration,
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.check_circle),
                     label: Text(
-                      'Complete Registration',
+                      _isSubmitting ? 'Completing...' : 'Complete Registration',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

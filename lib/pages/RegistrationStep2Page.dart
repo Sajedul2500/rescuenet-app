@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'RegistrationStep3Page.dart';
+import '../features/registration/data/services/registration_service.dart';
+import '../features/registration/domain/models/registration_models.dart';
 
 class RegistrationStep2Page extends StatefulWidget {
   final Map<String, dynamic> registrationData;
@@ -13,9 +17,13 @@ class RegistrationStep2Page extends StatefulWidget {
 
 class _RegistrationStep2PageState extends State<RegistrationStep2Page>
     with TickerProviderStateMixin {
-  String? _nidFrontImage;
-  String? _nidBackImage;
-  String? _selfieWithNidImage;
+  final RegistrationService _registrationService = RegistrationService();
+  final ImagePicker _picker = ImagePicker();
+
+  File? _nidFrontImage;
+  File? _nidBackImage;
+  File? _selfieWithNidImage;
+  bool _isSubmitting = false;
 
   late AnimationController _animController;
   late Animation<Offset> _slideAnimation;
@@ -57,40 +65,116 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
   }
 
   Future<void> _pickImage(String type) async {
-    // TODO: Implement image picker
-    // For now, we'll simulate image selection
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Image Picker'),
-        content: const Text(
-            'Image picker will be implemented with image_picker package.\nFor now, this is a placeholder.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                if (type == 'front') {
-                  _nidFrontImage =
-                      'nid_front_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                } else if (type == 'back') {
-                  _nidBackImage =
-                      'nid_back_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                } else if (type == 'selfie') {
-                  _selfieWithNidImage =
-                      'selfie_nid_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                }
-              });
-            },
-            child: const Text('Simulate Image Selected'),
+    try {
+      // Show source selection dialog
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'Select Image Source',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFFD32F2F)),
+                title: Text('Camera', style: GoogleFonts.poppins()),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.photo_library, color: Color(0xFFD32F2F)),
+                title: Text('Gallery', style: GoogleFonts.poppins()),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+
+      if (source == null) return;
+
+      // Pick image
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      // Validate file size (max 5MB = 5120 KB)
+      final File file = File(pickedFile.path);
+      final int fileSizeInBytes = await file.length();
+      final double fileSizeInKB = fileSizeInBytes / 1024;
+      final double fileSizeInMB = fileSizeInKB / 1024;
+
+      if (fileSizeInKB > 5120) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Image size (${fileSizeInMB.toStringAsFixed(2)} MB) exceeds 5 MB limit',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Validate file type
+      final String extension = pickedFile.path.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png'].contains(extension)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Invalid file type. Only JPEG and PNG are allowed',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Update state with selected image
+      setState(() {
+        if (type == 'front') {
+          _nidFrontImage = file;
+        } else if (type == 'back') {
+          _nidBackImage = file;
+        } else if (type == 'selfie') {
+          _selfieWithNidImage = file;
+        }
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Image selected (${fileSizeInMB.toStringAsFixed(2)} MB)',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error picking image: $e',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _removeImage(String type) {
@@ -105,35 +189,82 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
     });
   }
 
-  void _proceedToNextStep() {
-    // Add verification data to registration data
-    final updatedData = {
-      ...widget.registrationData,
-      'nidFrontImage': _nidFrontImage,
-      'nidBackImage': _nidBackImage,
-      'selfieWithNidImage': _selfieWithNidImage,
-      'verificationSkipped': _nidFrontImage == null,
-    };
+  void _proceedToNextStep() async {
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 600),
-        pageBuilder: (_, __, ___) =>
-            RegistrationStep3Page(registrationData: updatedData),
-        transitionsBuilder: (_, animation, __, child) {
-          return SlideTransition(
-            position: Tween(begin: const Offset(1, 0), end: Offset.zero)
-                .chain(CurveTween(curve: Curves.easeOut))
-                .animate(animation),
-            child: child,
-          );
-        },
-      ),
-    );
+    try {
+      // Prepare Step 2 data with File objects directly
+      final step2Data = Step2Data(
+        nidFrontImage: _nidFrontImage,
+        nidBackImage: _nidBackImage,
+        selfieWithNidImage: _selfieWithNidImage,
+      );
+
+      // Submit to backend
+      final response = await _registrationService.submitStep2(step2Data);
+
+      if (!mounted) return;
+
+      if (response.success) {
+        // Success - Navigate to Step 3
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(response.message ?? 'Verification documents submitted!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        final updatedData = {
+          ...widget.registrationData,
+          'verificationSkipped': false,
+          'verificationCompleted': true,
+        };
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, __, ___) =>
+                RegistrationStep3Page(registrationData: updatedData),
+            transitionsBuilder: (_, animation, __, child) {
+              return SlideTransition(
+                position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                    .chain(CurveTween(curve: Curves.easeOut))
+                    .animate(animation),
+                child: child,
+              );
+            },
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'Failed to submit verification'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
-  void _skipVerification() {
+  void _skipVerification() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -151,9 +282,72 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _proceedToNextStep();
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              navigator.pop(); // Close dialog
+
+              setState(() {
+                _isSubmitting = true;
+              });
+
+              try {
+                // Call skip API
+                final response = await _registrationService.skipStep2();
+
+                if (!mounted) return;
+
+                if (response.success) {
+                  final updatedData = {
+                    ...widget.registrationData,
+                    'verificationSkipped': true,
+                  };
+
+                  // Navigate without calling setState after
+                  navigator.pushReplacement(
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 600),
+                      pageBuilder: (_, __, ___) =>
+                          RegistrationStep3Page(registrationData: updatedData),
+                      transitionsBuilder: (_, animation, __, child) {
+                        return SlideTransition(
+                          position:
+                              Tween(begin: const Offset(1, 0), end: Offset.zero)
+                                  .chain(CurveTween(curve: Curves.easeOut))
+                                  .animate(animation),
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  if (mounted) {
+                    setState(() {
+                      _isSubmitting = false;
+                    });
+                  }
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          response.message ?? 'Failed to skip verification'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() {
+                    _isSubmitting = false;
+                  });
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),
@@ -169,7 +363,7 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
   Widget _buildImageUploadCard({
     required String title,
     required String description,
-    required String? imagePath,
+    required File? imagePath,
     required VoidCallback onPickImage,
     required VoidCallback onRemoveImage,
     bool isRequired = false,
@@ -235,33 +429,56 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Image uploaded',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.green[900],
+              FutureBuilder<int>(
+                future: imagePath.length(),
+                builder: (context, snapshot) {
+                  final sizeText = snapshot.hasData
+                      ? '${(snapshot.data! / 1024 / 1024).toStringAsFixed(2)} MB'
+                      : 'Loading...';
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                imagePath.path.split('/').last,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.green[900],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                sizeText,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.green[700],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          onPressed: onRemoveImage,
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          tooltip: 'Remove',
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: onRemoveImage,
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      tooltip: 'Remove',
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
           ],
         ),
@@ -376,7 +593,7 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
 
                 // Continue Button
                 ElevatedButton(
-                  onPressed: _proceedToNextStep,
+                  onPressed: _isSubmitting ? null : _proceedToNextStep,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD32F2F),
                     foregroundColor: Colors.white,
@@ -385,31 +602,42 @@ class _RegistrationStep2PageState extends State<RegistrationStep2Page>
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Continue',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Continue',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 12),
 
                 // Skip Button
                 TextButton(
-                  onPressed: _skipVerification,
+                  onPressed: _isSubmitting ? null : _skipVerification,
                   child: Text(
                     'Skip for Now',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
-                      color: Colors.grey[700],
+                      color:
+                          _isSubmitting ? Colors.grey[400] : Colors.grey[700],
                       decoration: TextDecoration.underline,
                     ),
                   ),

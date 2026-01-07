@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'app_startup.dart';
+import 'core/guards/registration_guard.dart';
 
 void main() => runApp(const RescueNetApp());
 
@@ -17,7 +17,8 @@ class RescueNetApp extends StatelessWidget {
         primaryColor: const Color(0xFFD32F2F),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const AppStartup(), // Startup logic decides the initial route
+      home:
+          const RegistrationGuard(), // Guard checks backend registration status
     );
   }
 }
