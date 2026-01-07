@@ -6,6 +6,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:RescueNetApp/services/geocoding_service.dart';
 import 'package:RescueNetApp/services/weather_service.dart';
 import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_bottom_nav.dart';
+import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_header.dart';
+import 'package:RescueNetApp/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart';
+import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
+import 'package:RescueNetApp/pages/SettingPage.dart';
 
 class UserDashboardPage extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -27,16 +31,26 @@ class _UserDashboardPageState extends State<UserDashboardPage>
   Map<String, dynamic>? _weatherData;
   bool _isFetchingWeather = false;
 
+  // Header ViewModel
+  DashboardHeaderViewModel? _headerViewModel;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize header view model
+    _headerViewModel = DashboardHeaderViewModel();
+    _headerViewModel?.onVerifyIdentity = _handleVerifyIdentity;
+    _headerViewModel?.onAddEmergencyContact = _handleAddEmergencyContact;
+
     _checkLocationPermission();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _headerViewModel?.dispose();
     super.dispose();
   }
 
@@ -670,63 +684,88 @@ class _UserDashboardPageState extends State<UserDashboardPage>
     );
   }
 
+  // Header action handlers
+  void _handleVerifyIdentity() {
+    // Navigate to identity verification page
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingPage()),
+    );
+  }
+
+  void _handleAddEmergencyContact() {
+    // Navigate to emergency contact page
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EmergencyContactPage()),
+    ).then((_) {
+      // Refresh header after returning
+      _headerViewModel?.refresh();
+    });
+  }
+
+  void _handleProfileTap() {
+    // Navigate to settings/profile
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFD32F2F),
-        elevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.emergency, color: Colors.white, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              'RescueNet',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+      body: Column(
+        children: [
+          // Context-aware header
+          if (_headerViewModel != null)
+            DashboardHeader(
+              viewModel: _headerViewModel!,
+              onProfileTap: _handleProfileTap,
             ),
-          ],
-        ),
-        automaticallyImplyLeading: false,
-      ),
-      body: !_isLocationEnabled
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.location_off, size: 80, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Location Required',
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+
+          // Main content
+          Expanded(
+            child: !_isLocationEnabled
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.location_off,
+                            size: 80, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Location Required',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      await _fetchLocationAndPlaceName();
+                      await _headerViewModel?.refresh();
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        children: [
+                          // Weather Card
+                          _buildWeatherCard(),
+
+                          // Help Requests Feed
+                          _buildRequestsFeed(),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: () async {
-                await _fetchLocationAndPlaceName();
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Weather Card
-                    _buildWeatherCard(),
-
-                    // Help Requests Feed
-                    _buildRequestsFeed(),
-                  ],
-                ),
-              ),
-            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: DashboardBottomNav(
         latitude: _latitude,
         longitude: _longitude,
