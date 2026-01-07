@@ -5,18 +5,21 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:RescueNetApp/services/geocoding_service.dart';
 import 'package:RescueNetApp/services/weather_service.dart';
-import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_bottom_nav.dart';
+import '../widgets/dashboard_bottom_nav.dart';
 
-class UserDashboardPage extends StatefulWidget {
+/// Clean refactored user dashboard screen.
+/// Follows clean architecture principles with separation of concerns.
+/// Contains only the main UI logic and delegates navigation to child widgets.
+class UserDashboardScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
 
-  const UserDashboardPage({super.key, this.userData});
+  const UserDashboardScreen({super.key, this.userData});
 
   @override
-  State<UserDashboardPage> createState() => _UserDashboardPageState();
+  State<UserDashboardScreen> createState() => _UserDashboardScreenState();
 }
 
-class _UserDashboardPageState extends State<UserDashboardPage>
+class _UserDashboardScreenState extends State<UserDashboardScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isLocationEnabled = false;
   bool _isCheckingLocation = false;
@@ -43,7 +46,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Check location when app comes back to foreground
       _checkLocationPermission();
     }
   }
@@ -56,11 +58,9 @@ class _UserDashboardPageState extends State<UserDashboardPage>
     });
 
     try {
-      // Check if location service is enabled on device
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        // Location service is disabled on device
         setState(() {
           _isLocationEnabled = false;
           _isCheckingLocation = false;
@@ -71,11 +71,9 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         return;
       }
 
-      // Check if app has location permission
       final permission = await Permission.location.status;
 
       if (!permission.isGranted) {
-        // App doesn't have permission (denied, permanently denied, restricted, limited)
         setState(() {
           _isLocationEnabled = false;
           _isCheckingLocation = false;
@@ -86,7 +84,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         return;
       }
 
-      // Both service and permission are granted
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('locationEnabled', true);
 
@@ -95,10 +92,8 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         _isCheckingLocation = false;
       });
 
-      // Fetch current location and get place name
       _fetchLocationAndPlaceName();
     } catch (e) {
-      // Handle error
       setState(() {
         _isLocationEnabled = false;
         _isCheckingLocation = false;
@@ -117,7 +112,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
     });
 
     try {
-      // Get current position
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -127,7 +121,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         _longitude = position.longitude;
       });
 
-      // Fetch place name from OpenStreetMap
       final locationData = await GeocodingService.getPlaceFromCoordinates(
         latitude: position.latitude,
         longitude: position.longitude,
@@ -141,7 +134,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           _isFetchingPlaceName = false;
         });
 
-        // Save to SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userLocation', placeName);
         await prefs.setString(
@@ -149,10 +141,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         await prefs.setDouble('latitude', position.latitude);
         await prefs.setDouble('longitude', position.longitude);
 
-        print('Location: $placeName');
-        print('Coordinates: ${position.latitude}, ${position.longitude}');
-
-        // Fetch weather data
         _fetchWeatherData();
       } else {
         setState(() {
@@ -161,7 +149,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         });
       }
     } catch (e) {
-      print('Error fetching location: $e');
       setState(() {
         _placeName = 'Unable to fetch location';
         _isFetchingPlaceName = false;
@@ -193,7 +180,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         });
       }
     } catch (e) {
-      print('Error fetching weather: $e');
       setState(() {
         _isFetchingWeather = false;
       });
@@ -329,124 +315,24 @@ class _UserDashboardPageState extends State<UserDashboardPage>
 
   Future<void> _requestLocationPermission(BuildContext dialogContext) async {
     try {
-      // First check if location service is enabled on device
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        // Close dialog first
         Navigator.of(dialogContext).pop();
-
-        // Show dialog prompting user to enable location service in device settings
         if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => WillPopScope(
-              onWillPop: () async => false,
-              child: AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                title: Row(
-                  children: [
-                    const Icon(Icons.settings, color: Colors.orange, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Enable Location Service',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Location service is turned off on your device.',
-                      style: GoogleFonts.poppins(fontSize: 14),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Please enable it in your device settings:',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '1. Go to Settings\n2. Open Location\n3. Turn on Location Services',
-                      style: GoogleFonts.poppins(fontSize: 13),
-                    ),
-                  ],
-                ),
-                actions: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        // Open location settings
-                        await Geolocator.openLocationSettings();
-                        Navigator.of(context).pop();
-                        // Recheck after a delay
-                        await Future.delayed(const Duration(seconds: 2));
-                        _checkLocationPermission();
-                      },
-                      icon: const Icon(Icons.settings),
-                      label: Text(
-                        'Open Settings',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD32F2F),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _checkLocationPermission();
-                    },
-                    child: Text(
-                      'I\'ve Enabled It',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFFD32F2F),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          _showOpenLocationSettingsDialog();
         }
         return;
       }
 
-      // Check current permission status first
       var currentStatus = await Permission.location.status;
 
-      // If already granted, just proceed with location check
       if (currentStatus.isGranted) {
         Navigator.of(dialogContext).pop();
         await _checkLocationPermission();
         return;
       }
 
-      // If permanently denied, go straight to app settings
       if (currentStatus.isPermanentlyDenied) {
         Navigator.of(dialogContext).pop();
         if (mounted) {
@@ -455,11 +341,9 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         return;
       }
 
-      // Request app permission if not already granted
       final status = await Permission.location.request();
 
       if (status.isGranted) {
-        // Permission granted, try to get location
         try {
           Position position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
@@ -474,10 +358,8 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             _isLocationEnabled = true;
           });
 
-          // Close dialog
           Navigator.of(dialogContext).pop();
 
-          // Show success message
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -497,7 +379,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             );
           }
         } catch (e) {
-          // Could not get position, but permission is granted
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('locationEnabled', true);
           await prefs.setString('userLocation', 'Location permission granted');
@@ -509,21 +390,17 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           Navigator.of(dialogContext).pop();
         }
       } else if (status.isPermanentlyDenied) {
-        // Permission permanently denied, prompt to open settings
         Navigator.of(dialogContext).pop();
         if (mounted) {
           _showOpenAppSettingsDialog();
         }
       } else if (status.isDenied) {
-        // Permission was just denied (not permanently), but might need settings if dialog didn't show
         Navigator.of(dialogContext).pop();
         if (mounted) {
-          // Check again if it's actually permanently denied now
           final recheckStatus = await Permission.location.status;
           if (recheckStatus.isPermanentlyDenied) {
             _showOpenAppSettingsDialog();
           } else {
-            // Try one more time with a delay
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -544,12 +421,9 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         }
       }
     } catch (e) {
-      // Handle error - close dialog and show error
       try {
         Navigator.of(dialogContext).pop();
-      } catch (_) {
-        // Dialog might already be closed
-      }
+      } catch (_) {}
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -564,7 +438,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           ),
         );
 
-        // Show dialog again after error
         Future.delayed(const Duration(seconds: 3), () {
           if (mounted && !_isLocationEnabled) {
             _showLocationPermissionDialog();
@@ -572,6 +445,101 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         });
       }
     }
+  }
+
+  void _showOpenLocationSettingsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.settings, color: Colors.orange, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Enable Location Service',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Location service is turned off on your device.',
+                style: GoogleFonts.poppins(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Please enable it in your device settings:',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1. Go to Settings\n2. Open Location\n3. Turn on Location Services',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await Geolocator.openLocationSettings();
+                  Navigator.of(context).pop();
+                  await Future.delayed(const Duration(seconds: 2));
+                  _checkLocationPermission();
+                },
+                icon: const Icon(Icons.settings),
+                label: Text(
+                  'Open Settings',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD32F2F),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _checkLocationPermission();
+              },
+              child: Text(
+                'I\'ve Enabled It',
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFFD32F2F),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showOpenAppSettingsDialog() {
@@ -629,7 +597,6 @@ class _UserDashboardPageState extends State<UserDashboardPage>
                 onPressed: () async {
                   await openAppSettings();
                   Navigator.of(context).pop();
-                  // Give user time to change settings
                   await Future.delayed(const Duration(seconds: 1));
                   _checkLocationPermission();
                 },
@@ -718,20 +685,13 @@ class _UserDashboardPageState extends State<UserDashboardPage>
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-                    // Weather Card
                     _buildWeatherCard(),
-
-                    // Help Requests Feed
                     _buildRequestsFeed(),
                   ],
                 ),
               ),
             ),
-      bottomNavigationBar: DashboardBottomNav(
-        latitude: _latitude,
-        longitude: _longitude,
-        placeName: _placeName,
-      ),
+      bottomNavigationBar: const DashboardBottomNav(),
     );
   }
 
@@ -906,7 +866,7 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             icon: Icons.local_fire_department,
             color: Colors.deepOrange,
           ),
-          const SizedBox(height: 80), // Space for bottom nav
+          const SizedBox(height: 80),
         ],
       ),
     );
