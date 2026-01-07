@@ -127,6 +127,25 @@ class DashboardHeaderViewModel extends ChangeNotifier {
     }
   }
 
+  /// Update verification status from dashboard API
+  Future<void> updateVerificationStatus({
+    required bool isVerified,
+    required bool hasEmergencyContact,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isIdentityVerified', isVerified);
+      await prefs.setBool('hasEmergencyContact', hasEmergencyContact);
+      _state = _state.copyWith(
+        isIdentityVerified: isVerified,
+        hasEmergencyContact: hasEmergencyContact,
+      );
+      _updateMessage();
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySubscription?.cancel();

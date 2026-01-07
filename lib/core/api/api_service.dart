@@ -142,10 +142,11 @@ class ApiService {
 
     // Check if response has success flag
     if (data is Map<String, dynamic>) {
-      final success = data['success'] ?? true;
+      final success = data['success'];
       final message = data['message'] as String?;
 
-      if (!success) {
+      // If success field exists and is false, return error
+      if (success != null && !success) {
         return ApiResponse.error(
           message ?? 'Request failed',
           statusCode: response.statusCode,
@@ -154,8 +155,15 @@ class ApiService {
       }
 
       // Parse data if parser provided
-      final parsedData =
-          parser != null ? parser(data['data']) : data['data'] as T?;
+      T? parsedData;
+
+      // Check if response has nested 'data' key (registration endpoints)
+      if (data.containsKey('data') && data['data'] != null) {
+        parsedData = parser != null ? parser(data['data']) : data['data'] as T?;
+      } else {
+        // No nested 'data' key (login endpoint) - parse the entire response
+        parsedData = parser != null ? parser(data) : data as T?;
+      }
 
       return ApiResponse.success(
         parsedData as T,

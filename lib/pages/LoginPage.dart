@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'RegistrationStep1Page.dart';
 import 'UserDashboardPage.dart';
+import '../features/auth/data/services/auth_service.dart';
+import '../core/storage/auth_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,10 +15,13 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+  final AuthService _authService = AuthService();
+  final AuthStorage _authStorage = AuthStorage();
   final _loginIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   late AnimationController _formAnimationController;
   late Animation<Offset> _formSlideAnimation;
@@ -75,26 +80,19 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _checkLoginSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    // Check if user has valid auth token
+    final isAuthenticated = await _authStorage.isAuthenticated();
+    final isRegistrationComplete = await _authStorage.isRegistrationComplete();
 
-    if (isLoggedIn) {
+    if (isAuthenticated && isRegistrationComplete) {
       // User is already logged in, navigate to dashboard
-      final userData = {
-        'fullName': prefs.getString('userName') ?? 'User',
-        'loginId': prefs.getString('loginId') ?? '',
-        'location': prefs.getString('userLocation') ?? 'Location not set',
-      };
-
-      // Navigate to dashboard after a short delay
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               transitionDuration: const Duration(milliseconds: 700),
-              pageBuilder: (_, __, ___) =>
-                  UserDashboardPage(userData: userData),
+              pageBuilder: (_, __, ___) => const UserDashboardPage(),
               transitionsBuilder: (_, animation, __, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
@@ -105,49 +103,36 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _saveLoginSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', true);
-    await prefs.setString('loginId', _loginIdController.text.trim());
-    await prefs.setString(
-        'userName', 'User'); // In production, get this from API
-    await prefs.setString(
-        'userLocation', 'Location not set'); // In production, get this from API
-  }
-
   void _login() async {
     if (_formKey.currentState!.validate()) {
-      final loginId = _loginIdController.text.trim();
-      final password = _passwordController.text;
+      setState(() {
+        _isLoading = true;
+      });
 
-      // Demo validation - accepts multiple formats
-      // In production, verify against backend API
-      bool isValidLogin = false;
+      try {
+        final loginId = _loginIdController.text.trim();
+        final password = _passwordController.text;
 
-      // Accept email
-      if (loginId == 'user@rescuenet.com' && password == 'password123') {
-        isValidLogin = true;
-      }
-      // Accept phone
-      else if (loginId == '01712345678' && password == 'password123') {
-        isValidLogin = true;
-      }
-      // Accept username
-      else if (loginId == 'rescueuser' && password == 'password123') {
-        isValidLogin = true;
-      }
+        // Call login API
+        final response = await _authService.login(
+          loginId: loginId,
+          password: password,
+        );
 
-      if (isValidLogin) {
-        // Save login session
-        await _saveLoginSession();
+        if (!mounted) return;
 
-        if (mounted) {
+        if (response.success && response.data != null) {
+          // Save additional user info to SharedPreferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userName', response.data!.user.name);
+          await prefs.setString('loginId', loginId);
+
+          // Navigate to dashboard
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               transitionDuration: const Duration(milliseconds: 700),
-              pageBuilder: (_, __, ___) =>
-                  const UserDashboardPage(userData: null),
+              pageBuilder: (_, __, ___) => const UserDashboardPage(),
               transitionsBuilder: (_, animation, __, child) {
                 return SlideTransition(
                   position: Tween(begin: const Offset(1, 0), end: Offset.zero)
@@ -158,11 +143,32 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               },
             ),
           );
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Invalid login ID or password',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
-      } else {
+      } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid login ID or password')),
+          SnackBar(
+            content: Text('Error: $e', style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
         );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -281,7 +287,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: _login,
+                            onPressed: _isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFD32F2F),
                               shape: RoundedRectangleBorder(
@@ -289,12 +295,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               ),
                               elevation: 6,
                             ),
-                            child: Text('Login',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                )),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text('Login',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    )),
                           ),
                         ),
                       ),

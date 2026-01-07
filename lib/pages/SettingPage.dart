@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'LoginPage.dart';
+import '../features/auth/data/services/auth_service.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -11,6 +12,7 @@ class SettingPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingPage> {
+  final AuthService _authService = AuthService();
   bool _notificationsEnabled = true;
   bool _locationSharing = true;
   String _selectedLanguage = 'English';
@@ -43,7 +45,6 @@ class _SettingsPageState extends State<SettingPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           _buildSectionTitle('Notifications'),
           _buildCard(
             children: [
@@ -55,7 +56,6 @@ class _SettingsPageState extends State<SettingPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           _buildSectionTitle('Privacy'),
           _buildCard(
             children: [
@@ -67,29 +67,35 @@ class _SettingsPageState extends State<SettingPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           _buildSectionTitle('Account'),
           _buildCard(
             children: [
               ListTile(
                 leading: const Icon(Icons.lock),
-                title: Text('Change Password', style: GoogleFonts.poppins(fontSize: 14)),
+                title: Text('Change Password',
+                    style: GoogleFonts.poppins(fontSize: 14)),
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Change password feature coming soon!')),
+                    const SnackBar(
+                        content: Text('Change password feature coming soon!')),
                   );
                 },
               ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: Text('Logout', style: GoogleFonts.poppins(fontSize: 14, color: Colors.red)),
+                title: Text('Logout',
+                    style:
+                        GoogleFonts.poppins(fontSize: 14, color: Colors.red)),
                 onTap: () => _confirmLogout(),
               ),
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                title: Text('Delete Account', style: GoogleFonts.poppins(fontSize: 14, color: Colors.redAccent)),
+                leading:
+                    const Icon(Icons.delete_forever, color: Colors.redAccent),
+                title: Text('Delete Account',
+                    style: GoogleFonts.poppins(
+                        fontSize: 14, color: Colors.redAccent)),
                 onTap: () => _confirmAccountDeletion(),
               ),
             ],
@@ -164,8 +170,10 @@ class _SettingsPageState extends State<SettingPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Confirm Logout', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to logout?', style: GoogleFonts.poppins()),
+        title: Text('Confirm Logout',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to logout?',
+            style: GoogleFonts.poppins()),
         actions: [
           TextButton(
             child: const Text('Cancel'),
@@ -174,35 +182,68 @@ class _SettingsPageState extends State<SettingPage> {
           TextButton(
             child: const Text('Logout', style: TextStyle(color: Colors.red)),
             onPressed: () async {
-              // Clear login session
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear(); // Clear all stored data
-              
-              if (context.mounted) {
-                Navigator.pop(context); // Close dialog
-                // Navigate to login page and clear all previous routes
-                Navigator.of(context).pushAndRemoveUntil(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 500),
-                    pageBuilder: (_, __, ___) => const LoginPage(),
-                    transitionsBuilder: (_, animation, __, child) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                  ),
-                  (route) => false,
-                );
-                
-                // Show success message after navigation
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Logged out successfully', style: GoogleFonts.poppins()),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                });
+              // Show loading
+              Navigator.pop(context); // Close dialog
+
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              );
+
+              try {
+                // Call logout API
+                await _authService.logout();
+
+                // Clear SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+
+                if (context.mounted) {
+                  // Close loading dialog
+                  Navigator.pop(context);
+
+                  // Navigate to login page and clear all previous routes
+                  Navigator.of(context).pushAndRemoveUntil(
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 500),
+                      pageBuilder: (_, __, ___) => const LoginPage(),
+                      transitionsBuilder: (_, animation, __, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                    ),
+                    (route) => false,
+                  );
+
+                  // Show success message after navigation
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Logged out successfully',
+                              style: GoogleFonts.poppins()),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  });
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  // Close loading dialog
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Logout failed: $e',
+                          style: GoogleFonts.poppins()),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
           ),
@@ -216,14 +257,16 @@ class _SettingsPageState extends State<SettingPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete Account'),
-        content: const Text('This action is irreversible. Are you sure you want to delete your account?'),
+        content: const Text(
+            'This action is irreversible. Are you sure you want to delete your account?'),
         actions: [
           TextButton(
             child: const Text('Cancel'),
             onPressed: () => Navigator.pop(context),
           ),
           TextButton(
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(

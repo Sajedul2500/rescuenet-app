@@ -19,6 +19,13 @@ class ApiConfig {
 
   static const String baseUrl = 'http://192.168.68.119:8000/api/v1';
 
+  // Authentication Endpoints
+  static const String login = '/login';
+  static const String logout = '/logout';
+
+  // Dashboard Endpoint
+  static const String dashboard = '/dashboard';
+
   // Registration Endpoints
   static const String registerStep1 = '/register/step1';
   static const String registerStep2 = '/register/step2';

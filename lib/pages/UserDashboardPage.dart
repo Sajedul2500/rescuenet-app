@@ -8,6 +8,7 @@ import 'package:RescueNetApp/services/weather_service.dart';
 import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_bottom_nav.dart';
 import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_header.dart';
 import 'package:RescueNetApp/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart';
+import 'package:RescueNetApp/features/dashboard/data/services/dashboard_service.dart';
 import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
 import 'package:RescueNetApp/pages/UserProfilePage.dart';
 
@@ -22,6 +23,8 @@ class UserDashboardPage extends StatefulWidget {
 
 class _UserDashboardPageState extends State<UserDashboardPage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  final DashboardService _dashboardService = DashboardService();
+
   bool _isLocationEnabled = false;
   bool _isCheckingLocation = false;
   String? _placeName;
@@ -30,6 +33,11 @@ class _UserDashboardPageState extends State<UserDashboardPage>
   bool _isFetchingPlaceName = false;
   Map<String, dynamic>? _weatherData;
   bool _isFetchingWeather = false;
+
+  // Dashboard data
+  UserInfo? _userInfo;
+  List<HelpRequest> _helpRequests = [];
+  bool _isFetchingDashboard = false;
 
   // Header ViewModel
   DashboardHeaderViewModel? _headerViewModel;
@@ -123,6 +131,47 @@ class _UserDashboardPageState extends State<UserDashboardPage>
     }
   }
 
+  Future<void> _fetchDashboardData() async {
+    if (_isFetchingDashboard) return;
+
+    setState(() {
+      _isFetchingDashboard = true;
+    });
+
+    try {
+      final response = await _dashboardService.getDashboardData(
+        latitude: _latitude,
+        longitude: _longitude,
+      );
+
+      if (response.success && response.data != null && mounted) {
+        setState(() {
+          _userInfo = response.data!.user;
+          _helpRequests = response.data!.helpRequests;
+          _isFetchingDashboard = false;
+        });
+
+        // Update header view model with verification status
+        _headerViewModel?.updateVerificationStatus(
+          isVerified: _userInfo!.isVerified,
+          hasEmergencyContact: _userInfo!.hasEmergencyContact,
+        );
+
+        print('Dashboard data loaded: ${_helpRequests.length} help requests');
+      } else {
+        setState(() {
+          _isFetchingDashboard = false;
+        });
+        print('Failed to fetch dashboard data: ${response.message}');
+      }
+    } catch (e) {
+      print('Error fetching dashboard data: $e');
+      setState(() {
+        _isFetchingDashboard = false;
+      });
+    }
+  }
+
   Future<void> _fetchLocationAndPlaceName() async {
     if (_isFetchingPlaceName) return;
 
@@ -168,6 +217,9 @@ class _UserDashboardPageState extends State<UserDashboardPage>
 
         // Fetch weather data
         _fetchWeatherData();
+
+        // Fetch dashboard data
+        _fetchDashboardData();
       } else {
         setState(() {
           _placeName = 'Location unavailable';
@@ -754,6 +806,7 @@ class _UserDashboardPageState extends State<UserDashboardPage>
                 : RefreshIndicator(
                     onRefresh: () async {
                       await _fetchLocationAndPlaceName();
+                      await _fetchDashboardData();
                       await _headerViewModel?.refresh();
                     },
                     child: SingleChildScrollView(
@@ -924,37 +977,90 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             ),
           ),
           const SizedBox(height: 16),
-          _buildRequestCard(
-            name: 'John Doe',
-            category: 'Medical Emergency',
-            description: 'Need urgent medical assistance at home',
-            time: '5 min ago',
-            distance: '1.2 km',
-            icon: Icons.medical_services,
-            color: Colors.red,
-          ),
-          _buildRequestCard(
-            name: 'Sarah Ahmed',
-            category: 'Accident',
-            description: 'Car accident near the highway, need help',
-            time: '12 min ago',
-            distance: '3.5 km',
-            icon: Icons.car_crash,
-            color: Colors.orange,
-          ),
-          _buildRequestCard(
-            name: 'Mike Rahman',
-            category: 'Fire Emergency',
-            description: 'Small fire in apartment building',
-            time: '25 min ago',
-            distance: '5.8 km',
-            icon: Icons.local_fire_department,
-            color: Colors.deepOrange,
-          ),
+
+          if (_isFetchingDashboard)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_helpRequests.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_outlined,
+                        size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No help requests nearby',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ..._helpRequests.map((request) => _buildRequestCard(
+                  name: request.userName,
+                  category: request.category,
+                  description: request.description,
+                  time: request.timeAgo,
+                  distance: request.distanceText,
+                  icon: _getCategoryIcon(request.category),
+                  color: _getCategoryColor(request.category),
+                  request: request,
+                )),
+
           const SizedBox(height: 80), // Space for bottom nav
         ],
       ),
     );
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'medical':
+      case 'medical emergency':
+        return Icons.medical_services;
+      case 'accident':
+      case 'car accident':
+        return Icons.car_crash;
+      case 'fire':
+      case 'fire emergency':
+        return Icons.local_fire_department;
+      case 'flood':
+        return Icons.water;
+      case 'earthquake':
+        return Icons.crisis_alert;
+      default:
+        return Icons.emergency;
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'medical':
+      case 'medical emergency':
+        return Colors.red;
+      case 'accident':
+      case 'car accident':
+        return Colors.orange;
+      case 'fire':
+      case 'fire emergency':
+        return Colors.deepOrange;
+      case 'flood':
+        return Colors.blue;
+      case 'earthquake':
+        return Colors.purple;
+      default:
+        return Colors.red;
+    }
   }
 
   Widget _buildRequestCard({
@@ -965,6 +1071,7 @@ class _UserDashboardPageState extends State<UserDashboardPage>
     required String distance,
     required IconData icon,
     required Color color,
+    HelpRequest? request,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
