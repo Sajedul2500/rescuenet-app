@@ -3,15 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:RescueNetApp/pages/HelpRequestHistoryPage.dart';
 import 'package:RescueNetApp/pages/NearByVolunteersPage.dart';
 import 'package:RescueNetApp/pages/NearByRequestPage.dart';
-import 'package:RescueNetApp/pages/AlertPage.dart';
 import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
+import 'package:RescueNetApp/pages/AIChatBotPage.dart';
 import 'package:RescueNetApp/pages/DonatePage.dart';
 import 'package:RescueNetApp/pages/SettingPage.dart';
 import 'more_menu_item.dart';
 
-/// Modal bottom sheet that displays secondary actions.
-/// Follows clean architecture by separating UI logic from the dashboard.
-/// Uses animation and overlay instead of navigation for better UX.
+/// Modal bottom sheet that displays secondary (non-emergency) actions.
+/// Moved AI Chat and Contacts here as part of emergency-first UX refactor.
 class MoreBottomSheet extends StatelessWidget {
   const MoreBottomSheet({super.key});
 
@@ -96,6 +95,24 @@ class MoreBottomSheet extends StatelessWidget {
                   childAspectRatio: 0.95,
                   children: [
                     MoreMenuItem(
+                      icon: Icons.chat_bubble_outline,
+                      label: 'AI Chat',
+                      iconColor: Colors.blue,
+                      onTap: () => _navigateToPage(
+                        context,
+                        const AIChatBotPage(),
+                      ),
+                    ),
+                    MoreMenuItem(
+                      icon: Icons.contact_emergency,
+                      label: 'Contacts',
+                      iconColor: Colors.teal,
+                      onTap: () => _navigateToPage(
+                        context,
+                        const EmergencyContactPage(),
+                      ),
+                    ),
+                    MoreMenuItem(
                       icon: Icons.history,
                       label: 'Request History',
                       onTap: () => _navigateToPage(
@@ -119,24 +136,6 @@ class MoreBottomSheet extends StatelessWidget {
                       onTap: () => _navigateToPage(
                         context,
                         const NearByRequestPage(),
-                      ),
-                    ),
-                    MoreMenuItem(
-                      icon: Icons.warning_amber,
-                      label: 'Alerts',
-                      iconColor: Colors.amber[700],
-                      onTap: () => _navigateToPage(
-                        context,
-                        const AlertPage(),
-                      ),
-                    ),
-                    MoreMenuItem(
-                      icon: Icons.contact_emergency,
-                      label: 'Emergency Contact',
-                      iconColor: Colors.teal,
-                      onTap: () => _navigateToPage(
-                        context,
-                        const EmergencyContactPage(),
                       ),
                     ),
                     MoreMenuItem(

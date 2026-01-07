@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
-import 'package:RescueNetApp/pages/AIChatBotPage.dart';
 import 'package:RescueNetApp/pages/CreateRequestPage.dart';
+import 'package:RescueNetApp/pages/AlertPage.dart';
 import 'more_bottom_sheet.dart';
 import '../../../emergency_services/presentation/widgets/services_bottom_sheet.dart';
+import '../../../emergency_guidance/presentation/screens/emergency_guidance_list_screen.dart';
 
-/// Clean bottom navigation widget containing only critical emergency actions.
-/// Extracts navigation logic from dashboard screen for better separation of concerns.
+/// Emergency-first bottom navigation widget.
+/// Prioritizes critical emergency actions over non-essential features.
 class DashboardBottomNav extends StatefulWidget {
   final double? latitude;
   final double? longitude;
@@ -37,18 +37,13 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
     );
   }
 
-  void _showSheltersOptions() {
-    print('DEBUG: _showSheltersOptions called');
-    print(
-        'DEBUG: Latitude: ${widget.latitude}, Longitude: ${widget.longitude}');
-
+  void _showNearbyHelp() {
     setState(() {
-      _currentIndex = 3;
+      _currentIndex = 1;
     });
 
     // Check if location data is available
     if (widget.latitude != null && widget.longitude != null) {
-      print('DEBUG: Opening ServicesBottomSheet');
       ServicesBottomSheet.show(
         context,
         latitude: widget.latitude!,
@@ -56,7 +51,6 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
         placeName: widget.placeName ?? 'Your Location',
       );
     } else {
-      print('DEBUG: Location not available, showing error');
       // Fallback: show error snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -69,7 +63,6 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
   }
 
   void _showMoreOptions() {
-    print('DEBUG: _showMoreOptions called');
     setState(() {
       _currentIndex = 4;
     });
@@ -93,32 +86,32 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildNavItem(
-                icon: Icons.contact_emergency,
-                label: 'Contacts',
+                icon: Icons.health_and_safety,
+                label: 'Guidance',
                 index: 0,
                 onTap: () => _navigateToPage(
-                  const EmergencyContactPage(),
+                  const EmergencyGuidanceListScreen(),
                   0,
                 ),
               ),
               _buildNavItem(
-                icon: Icons.chat_bubble_outline,
-                label: 'AI Chat',
+                icon: Icons.location_on,
+                label: 'Nearby Help',
                 index: 1,
-                onTap: () => _navigateToPage(
-                  const AIChatBotPage(),
-                  1,
-                ),
+                onTap: _showNearbyHelp,
               ),
               _buildCenterFAB(),
               _buildNavItem(
-                icon: Icons.home_repair_service,
-                label: 'Services',
+                icon: Icons.warning_amber,
+                label: 'Alerts',
                 index: 3,
-                onTap: _showSheltersOptions,
+                onTap: () => _navigateToPage(
+                  const AlertPage(),
+                  3,
+                ),
               ),
               _buildNavItem(
                 icon: Icons.more_horiz,
