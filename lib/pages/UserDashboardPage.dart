@@ -9,7 +9,7 @@ import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_b
 import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_header.dart';
 import 'package:RescueNetApp/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart';
 import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
-import 'package:RescueNetApp/pages/SettingPage.dart';
+import 'package:RescueNetApp/pages/UserProfilePage.dart';
 
 class UserDashboardPage extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -686,11 +686,14 @@ class _UserDashboardPageState extends State<UserDashboardPage>
 
   // Header action handlers
   void _handleVerifyIdentity() {
-    // Navigate to identity verification page
+    // Navigate to user profile page for identity verification
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const SettingPage()),
-    );
+      MaterialPageRoute(builder: (context) => const UserProfilePage()),
+    ).then((_) {
+      // Refresh header after returning
+      _headerViewModel?.refresh();
+    });
   }
 
   void _handleAddEmergencyContact() {
@@ -705,11 +708,14 @@ class _UserDashboardPageState extends State<UserDashboardPage>
   }
 
   void _handleProfileTap() {
-    // Navigate to settings/profile
+    // Navigate to user profile
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const SettingPage()),
-    );
+      MaterialPageRoute(builder: (context) => const UserProfilePage()),
+    ).then((_) {
+      // Refresh header after returning
+      _headerViewModel?.refresh();
+    });
   }
 
   @override
