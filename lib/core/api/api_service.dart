@@ -133,6 +133,52 @@ class ApiService {
     }
   }
 
+  /// Multipart POST request for file uploads
+  Future<ApiResponse<T>> postMultipart<T>(
+    String endpoint, {
+    required FormData data,
+    T Function(dynamic)? parser,
+  }) async {
+    try {
+      final response = await _dio.post(
+        endpoint,
+        data: data,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      return _handleResponse(response, parser);
+    } on DioException catch (e) {
+      return _handleError(e);
+    } catch (e) {
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  /// Multipart PUT request for file uploads
+  Future<ApiResponse<T>> putMultipart<T>(
+    String endpoint, {
+    required FormData data,
+    T Function(dynamic)? parser,
+  }) async {
+    try {
+      final response = await _dio.put(
+        endpoint,
+        data: data,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      return _handleResponse(response, parser);
+    } on DioException catch (e) {
+      return _handleError(e);
+    } catch (e) {
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
   /// Handle successful response
   ApiResponse<T> _handleResponse<T>(
     Response response,

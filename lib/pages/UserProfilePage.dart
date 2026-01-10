@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:RescueNetApp/services/user_profile_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -13,10 +14,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
 
+  final UserProfileService _profileService = UserProfileService();
+
   // Profile Info Controllers
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _usernameController = TextEditingController();
 
   // Password Change Controllers
   final _currentPasswordController = TextEditingController();
@@ -27,11 +31,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
 
+  // User Profile Data (stored for reference)
+  // ignore: unused_field
+  UserProfile? _userProfile;
+  bool _isLoadingProfile = false;
+  bool _isSavingProfile = false;
+  bool _isChangingPassword = false;
+
   // Verification Status
   bool _isVerified = false;
+  String? _profilePictureUrl;
   String? _nidFrontImage;
-  String? _nidBackImage;
   String? _selfieWithNidImage;
+  bool _isSubmittingVerification = false;
 
   @override
   void initState() {
@@ -40,16 +52,58 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _fullNameController.text = prefs.getString('userName') ?? '';
-      _emailController.text = prefs.getString('userEmail') ?? '';
-      _phoneController.text = prefs.getString('userPhone') ?? '';
-      _isVerified = prefs.getBool('isIdentityVerified') ?? false;
-      _nidFrontImage = prefs.getString('nidFrontImage');
-      _nidBackImage = prefs.getString('nidBackImage');
-      _selfieWithNidImage = prefs.getString('selfieWithNidImage');
+      _isLoadingProfile = true;
     });
+
+    try {
+      final response = await _profileService.getProfile();
+
+      if (!mounted) return;
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _userProfile = response.data;
+          _fullNameController.text = response.data!.name;
+          _emailController.text = response.data!.email ?? '';
+          _phoneController.text = response.data!.phone ?? '';
+          _usernameController.text = response.data!.username ?? '';
+          _isVerified = response.data!.isVerified;
+          _profilePictureUrl = response.data!.profilePicture;
+          _isLoadingProfile = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to load profile',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error loading profile: $e',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -57,6 +111,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _usernameController.dispose();
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
@@ -66,33 +121,72 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userName', _fullNameController.text);
-      await prefs.setString('userEmail', _emailController.text);
-      await prefs.setString('userPhone', _phoneController.text);
+    setState(() {
+      _isSavingProfile = true;
+    });
 
-      if (mounted) {
+    try {
+      final response = await _profileService.updateProfile(
+        name: _fullNameController.text.trim(),
+        email: _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : null,
+        phone: _phoneController.text.trim().isNotEmpty
+            ? _phoneController.text.trim()
+            : null,
+        username: _usernameController.text.trim().isNotEmpty
+            ? _usernameController.text.trim()
+            : null,
+      );
+
+      if (!mounted) return;
+
+      if (response.success) {
+        setState(() {
+          _userProfile = response.data;
+          _isSavingProfile = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Profile updated successfully!',
-                    style: GoogleFonts.poppins()),
+                Text(
+                  response.message ?? 'Profile updated successfully!',
+                  style: GoogleFonts.poppins(),
+                ),
               ],
             ),
             backgroundColor: Colors.green,
           ),
         );
+      } else {
+        setState(() {
+          _isSavingProfile = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message ?? 'Failed to update profile',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isSavingProfile = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Error saving profile: $e', style: GoogleFonts.poppins()),
+            content: Text(
+              'Error saving profile: $e',
+              style: GoogleFonts.poppins(),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -103,29 +197,76 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _changePassword() async {
     if (!_passwordFormKey.currentState!.validate()) return;
 
-    // TODO: Implement password change with backend
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 8),
-              Text('Password changed successfully!',
-                  style: GoogleFonts.poppins()),
-            ],
-          ),
-          backgroundColor: Colors.green,
-        ),
+    setState(() {
+      _isChangingPassword = true;
+    });
+
+    try {
+      final response = await _profileService.updatePassword(
+        currentPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
+        newPasswordConfirmation: _confirmPasswordController.text,
       );
-      _currentPasswordController.clear();
-      _newPasswordController.clear();
-      _confirmPasswordController.clear();
+
+      if (!mounted) return;
+
+      if (response.success) {
+        setState(() {
+          _isChangingPassword = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  response.message ?? 'Password changed successfully!',
+                  style: GoogleFonts.poppins(),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+      } else {
+        setState(() {
+          _isChangingPassword = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message ?? 'Failed to change password',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isChangingPassword = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error changing password: $e',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _pickImage(String type) async {
-    // TODO: Implement image picker with camera/gallery options
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -139,7 +280,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
               title: Text('Camera', style: GoogleFonts.poppins()),
               onTap: () {
                 Navigator.pop(context);
-                _simulateImagePick(type);
+                _pickImageFromSource(ImageSource.camera, type);
               },
             ),
             ListTile(
@@ -148,7 +289,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
               title: Text('Gallery', style: GoogleFonts.poppins()),
               onTap: () {
                 Navigator.pop(context);
-                _simulateImagePick(type);
+                _pickImageFromSource(ImageSource.gallery, type);
               },
             ),
           ],
@@ -157,25 +298,44 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  void _simulateImagePick(String type) {
-    setState(() {
-      final imagePath = '${type}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      if (type == 'front') {
-        _nidFrontImage = imagePath;
-      } else if (type == 'back') {
-        _nidBackImage = imagePath;
-      } else if (type == 'selfie') {
-        _selfieWithNidImage = imagePath;
+  Future<void> _pickImageFromSource(ImageSource source, String type) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          if (type == 'front') {
+            _nidFrontImage = image.path;
+          } else if (type == 'selfie') {
+            _selfieWithNidImage = image.path;
+          }
+        });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error picking image: $e',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _removeImage(String type) {
     setState(() {
       if (type == 'front') {
         _nidFrontImage = null;
-      } else if (type == 'back') {
-        _nidBackImage = null;
       } else if (type == 'selfie') {
         _selfieWithNidImage = null;
       }
@@ -183,9 +343,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _submitVerification() async {
-    if (_nidFrontImage == null ||
-        _nidBackImage == null ||
-        _selfieWithNidImage == null) {
+    if (_nidFrontImage == null || _selfieWithNidImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please upload all required documents',
@@ -196,26 +354,70 @@ class _UserProfilePageState extends State<UserProfilePage> {
       return;
     }
 
-    // TODO: Submit to backend for verification
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('nidFrontImage', _nidFrontImage!);
-    await prefs.setString('nidBackImage', _nidBackImage!);
-    await prefs.setString('selfieWithNidImage', _selfieWithNidImage!);
+    setState(() {
+      _isSubmittingVerification = true;
+    });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 8),
-              Text('Verification documents submitted!',
-                  style: GoogleFonts.poppins()),
-            ],
-          ),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final response = await _profileService.verifyProfile(
+        nidFrontImagePath: _nidFrontImage!,
+        selfieWithNidImagePath: _selfieWithNidImage!,
       );
+
+      if (!mounted) return;
+
+      if (response.success) {
+        setState(() {
+          _isSubmittingVerification = false;
+          if (response.data != null) {
+            _isVerified = response.data!.isVerified;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  response.message ?? 'Verification documents submitted!',
+                  style: GoogleFonts.poppins(),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        setState(() {
+          _isSubmittingVerification = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message ?? 'Failed to submit verification',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmittingVerification = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error submitting verification: $e',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -235,73 +437,84 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Profile Picture
-            Center(
-              child: Stack(
+      body: _isLoadingProfile
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFD32F2F),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: const Color(0xFFD32F2F),
-                    child:
-                        const Icon(Icons.person, size: 60, color: Colors.white),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
+                  // Profile Picture
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: const Color(0xFFD32F2F),
+                          backgroundImage: _profilePictureUrl != null
+                              ? NetworkImage(_profilePictureUrl!)
+                              : null,
+                          child: _profilePictureUrl == null
+                              ? const Icon(Icons.person,
+                                  size: 60, color: Colors.white)
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _isVerified ? Icons.verified : Icons.warning,
+                              color: _isVerified ? Colors.green : Colors.orange,
+                              size: 24,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        _isVerified ? Icons.verified : Icons.warning,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      _isVerified ? 'Verified Account' : 'Not Verified',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
                         color: _isVerified ? Colors.green : Colors.orange,
-                        size: 24,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // Section 1: Profile Info
+                  _buildProfileInfoSection(),
+                  const SizedBox(height: 16),
+
+                  // Section 2: Password Change
+                  _buildPasswordChangeSection(),
+                  const SizedBox(height: 16),
+
+                  // Section 3: Verification Status
+                  _buildVerificationSection(),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                _isVerified ? 'Verified Account' : 'Not Verified',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: _isVerified ? Colors.green : Colors.orange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Section 1: Profile Info
-            _buildProfileInfoSection(),
-            const SizedBox(height: 16),
-
-            // Section 2: Password Change
-            _buildPasswordChangeSection(),
-            const SizedBox(height: 16),
-
-            // Section 3: Verification Status
-            _buildVerificationSection(),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
     );
   }
 
@@ -351,17 +564,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Email (Optional)',
                   prefixIcon: const Icon(Icons.email_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
+                  if (value != null &&
+                      value.isNotEmpty &&
+                      !value.contains('@')) {
                     return 'Please enter a valid email';
                   }
                   return null;
@@ -372,7 +584,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'Phone Number',
+                  labelText: 'Phone Number *',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -380,19 +592,40 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
+                    return 'Phone number is required';
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Username (Optional)',
+                  prefixIcon: const Icon(Icons.alternate_email),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _saveProfile,
-                  icon: const Icon(Icons.save),
+                  onPressed: _isSavingProfile ? null : _saveProfile,
+                  icon: _isSavingProfile
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.save),
                   label: Text(
-                    'Save Profile',
+                    _isSavingProfile ? 'Saving...' : 'Save Profile',
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -536,10 +769,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _changePassword,
-                  icon: const Icon(Icons.lock_reset),
+                  onPressed: _isChangingPassword ? null : _changePassword,
+                  icon: _isChangingPassword
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.lock_reset),
                   label: Text(
-                    'Change Password',
+                    _isChangingPassword ? 'Changing...' : 'Change Password',
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -661,16 +904,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   ),
                   const SizedBox(height: 12),
                   _buildImageUploadCard(
-                    title: 'NID Back Side',
-                    description:
-                        'Upload the back side of your National ID card',
-                    imagePath: _nidBackImage,
-                    onPickImage: () => _pickImage('back'),
-                    onRemoveImage: () => _removeImage('back'),
-                    isRequired: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildImageUploadCard(
                     title: 'Selfie with NID',
                     description:
                         'Take a selfie holding your NID next to your face',
@@ -683,10 +916,24 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _submitVerification,
-                      icon: const Icon(Icons.upload),
+                      onPressed: _isSubmittingVerification
+                          ? null
+                          : _submitVerification,
+                      icon: _isSubmittingVerification
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.upload),
                       label: Text(
-                        'Submit for Verification',
+                        _isSubmittingVerification
+                            ? 'Submitting...'
+                            : 'Submit for Verification',
                         style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                       ),
                       style: ElevatedButton.styleFrom(

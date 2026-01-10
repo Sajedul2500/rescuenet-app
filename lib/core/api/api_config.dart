@@ -26,6 +26,11 @@ class ApiConfig {
   // Dashboard Endpoint
   static const String dashboard = '/dashboard';
 
+  // User Profile Endpoints
+  static const String profile = '/profile';
+  static const String updatePassword = '/update-password';
+  static const String verifyProfile = '/verify-profile';
+
   // Registration Endpoints
   static const String registerStep1 = '/register/step1';
   static const String registerStep2 = '/register/step2';
