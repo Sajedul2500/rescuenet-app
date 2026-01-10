@@ -73,23 +73,10 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
     super.dispose();
   }
 
-  String? _validateEmailOrMobile() {
-    final email = _emailController.text.trim();
-    final mobile = _mobileController.text.trim();
-
-    if (email.isEmpty && mobile.isEmpty) {
-      return 'Please provide either Email or Mobile Number';
-    }
-    return null;
-  }
-
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      // Email is optional if mobile is provided
-      if (_mobileController.text.trim().isNotEmpty) {
-        return null;
-      }
-      return 'Email is required if mobile is not provided';
+      // Email is optional
+      return null;
     }
 
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -101,11 +88,7 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
 
   String? _validateMobile(String? value) {
     if (value == null || value.isEmpty) {
-      // Mobile is optional if email is provided
-      if (_emailController.text.trim().isNotEmpty) {
-        return null;
-      }
-      return 'Mobile is required if email is not provided';
+      return 'Mobile number is required';
     }
 
     final mobileRegex = RegExp(r'^(?:\+88)?01[3-9]\d{8}$');
@@ -121,14 +104,6 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
 
   void _proceedToNextStep() async {
     if (_formKey.currentState!.validate()) {
-      final validationError = _validateEmailOrMobile();
-      if (validationError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(validationError)),
-        );
-        return;
-      }
-
       setState(() {
         _isSubmitting = true;
         _serverErrors = {}; // Clear previous errors
@@ -346,13 +321,12 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: 'Mobile Number',
+                      labelText: 'Mobile Number *',
                       hintText: '01XXXXXXXXX',
                       prefixIcon: const Icon(Icons.phone),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      helperText: 'Mobile or Email is required',
                       errorText:
                           _getServerError('phone') ?? _getServerError('mobile'),
                     ),
@@ -374,13 +348,12 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: 'Email Address',
+                      labelText: 'Email Address (Optional)',
                       hintText: 'example@email.com',
                       prefixIcon: const Icon(Icons.email),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      helperText: 'Mobile or Email is required',
                       errorText: _getServerError('email'),
                     ),
                     onChanged: (value) {
