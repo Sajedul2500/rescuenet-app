@@ -122,9 +122,13 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
             longitude: position.longitude,
           );
 
-          String placeName = 'Location detected';
+          String placeName;
           if (locationData != null) {
             placeName = GeocodingService.getShortPlaceName(locationData);
+          } else {
+            // Fallback to coordinates if geocoding fails
+            placeName =
+                '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
           }
 
           final prefs = await SharedPreferences.getInstance();
@@ -211,9 +215,13 @@ class _RegistrationStep3PageState extends State<RegistrationStep3Page>
             longitude: position.longitude,
           );
 
-          String placeName = 'Location detected';
+          String placeName;
           if (locationData != null) {
             placeName = GeocodingService.getShortPlaceName(locationData);
+          } else {
+            // Fallback to coordinates if geocoding fails
+            placeName =
+                '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
           }
 
           // Save location permission and data to SharedPreferences
