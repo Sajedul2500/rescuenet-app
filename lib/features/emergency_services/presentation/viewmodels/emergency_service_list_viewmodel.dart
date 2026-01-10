@@ -139,8 +139,4 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

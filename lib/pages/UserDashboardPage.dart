@@ -11,6 +11,7 @@ import 'package:RescueNetApp/features/dashboard/presentation/viewmodels/dashboar
 import 'package:RescueNetApp/features/dashboard/data/services/dashboard_service.dart';
 import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
 import 'package:RescueNetApp/pages/UserProfilePage.dart';
+import 'package:RescueNetApp/pages/HelpRequestDetailsPage.dart';
 
 class UserDashboardPage extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -1166,7 +1167,18 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (request != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HelpRequestDetailsPage(
+                            request: request,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.info_outline, size: 18),
                   label: Text(
                     'Details',

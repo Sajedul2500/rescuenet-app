@@ -315,7 +315,7 @@ class _RegistrationStep1PageState extends State<RegistrationStep1Page>
 
                   // Gender
                   DropdownButtonFormField<String>(
-                    value: _selectedGender,
+                    initialValue: _selectedGender,
                     decoration: InputDecoration(
                       labelText: 'Gender *',
                       prefixIcon: const Icon(Icons.person_outline),

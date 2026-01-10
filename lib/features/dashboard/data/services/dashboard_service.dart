@@ -15,11 +15,11 @@ class DashboardService {
     double? latitude,
     double? longitude,
   }) async {
-    final response = await _apiService.post<DashboardData>(
+    final response = await _apiService.get<DashboardData>(
       ApiConfig.dashboard,
-      data: {
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+      queryParameters: {
+        if (latitude != null) 'latitude': latitude.toString(),
+        if (longitude != null) 'longitude': longitude.toString(),
       },
       parser: (data) => DashboardData.fromJson(data as Map<String, dynamic>),
     );
@@ -102,18 +102,29 @@ class HelpRequest {
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) {
+    // Parse nested user object
+    final user = json['user'] as Map<String, dynamic>?;
+    final userName = user?['name']?.toString() ?? 'Unknown';
+
+    // Parse nested location object
+    final locationObj = json['location'] as Map<String, dynamic>?;
+    final latitude = (locationObj?['latitude'] as num?)?.toDouble();
+    final longitude = (locationObj?['longitude'] as num?)?.toDouble();
+    final locationName = locationObj?['name']?.toString();
+
     return HelpRequest(
       id: json['id'] as int? ?? 0,
-      userName: json['user_name']?.toString() ?? 'Unknown',
-      userPhone: json['user_phone']?.toString(),
-      category: json['category']?.toString() ?? 'Emergency',
+      userName: userName,
+      userPhone: null, // Not provided in API response
+      category: json['type']?.toString() ?? 'Emergency',
       description: json['description']?.toString() ?? '',
-      location: json['location']?.toString(),
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      location: locationName,
+      latitude: latitude,
+      longitude: longitude,
       status: json['status']?.toString() ?? 'pending',
-      createdAt: json['created_at']?.toString() ?? '',
-      distance: (json['distance'] as num?)?.toDouble(),
+      createdAt:
+          json['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+      distance: null, // Will be calculated if needed
     );
   }
 
