@@ -111,6 +111,7 @@ class HelpRequest {
     final latitude = (locationObj?['latitude'] as num?)?.toDouble();
     final longitude = (locationObj?['longitude'] as num?)?.toDouble();
     final locationName = locationObj?['name']?.toString();
+    final distance = (locationObj?['distance'] as num?)?.toDouble();
 
     return HelpRequest(
       id: json['id'] as int? ?? 0,
@@ -124,7 +125,7 @@ class HelpRequest {
       status: json['status']?.toString() ?? 'pending',
       createdAt:
           json['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-      distance: null, // Will be calculated if needed
+      distance: distance,
     );
   }
 
