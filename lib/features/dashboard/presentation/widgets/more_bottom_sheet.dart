@@ -4,6 +4,7 @@ import 'package:RescueNetApp/pages/HelpRequestHistoryPage.dart';
 import 'package:RescueNetApp/pages/NearByVolunteersPage.dart';
 import 'package:RescueNetApp/pages/NearByRequestPage.dart';
 import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
+import 'package:RescueNetApp/pages/AlertPage.dart';
 import 'package:RescueNetApp/pages/AIChatBotPage.dart';
 import 'package:RescueNetApp/pages/DonatePage.dart';
 import 'package:RescueNetApp/pages/SettingPage.dart';
@@ -95,6 +96,15 @@ class MoreBottomSheet extends StatelessWidget {
                   childAspectRatio: 0.95,
                   children: [
                     MoreMenuItem(
+                      icon: Icons.warning_amber_outlined,
+                      label: 'Alerts',
+                      iconColor: Colors.blue,
+                      onTap: () => _navigateToPage(
+                        context,
+                        const AlertPage(),
+                      ),
+                    ),
+                    MoreMenuItem(
                       icon: Icons.chat_bubble_outline,
                       label: 'AI Chat',
                       iconColor: Colors.blue,
@@ -129,15 +139,15 @@ class MoreBottomSheet extends StatelessWidget {
                         const NearByVolunteersPage(),
                       ),
                     ),
-                    MoreMenuItem(
-                      icon: Icons.map,
-                      label: 'Nearby Requests',
-                      iconColor: Colors.brown,
-                      onTap: () => _navigateToPage(
-                        context,
-                        const NearByRequestPage(),
-                      ),
-                    ),
+                    // MoreMenuItem(
+                    //   icon: Icons.map,
+                    //   label: 'Nearby Requests',
+                    //   iconColor: Colors.brown,
+                    //   onTap: () => _navigateToPage(
+                    //     context,
+                    //     const NearByRequestPage(),
+                    //   ),
+                    // ),
                     MoreMenuItem(
                       icon: Icons.favorite,
                       label: 'Donate',

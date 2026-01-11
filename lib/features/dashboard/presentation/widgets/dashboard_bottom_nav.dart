@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:RescueNetApp/pages/CreateRequestPage.dart';
-import 'package:RescueNetApp/pages/AlertPage.dart';
+import 'package:RescueNetApp/pages/HelpRequestHistoryPage.dart';
+import 'package:RescueNetApp/pages/UserDashboardPage.dart';
 import 'more_bottom_sheet.dart';
 import '../../../emergency_services/presentation/widgets/services_bottom_sheet.dart';
-import '../../../emergency_guidance/presentation/screens/emergency_guidance_list_screen.dart';
 
 /// Emergency-first bottom navigation widget.
 /// Prioritizes critical emergency actions over non-essential features.
@@ -89,11 +89,11 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildNavItem(
-                icon: Icons.health_and_safety,
-                label: 'Guidance',
+                icon: Icons.dashboard,
+                label: 'Home',
                 index: 0,
                 onTap: () => _navigateToPage(
-                  const EmergencyGuidanceListScreen(),
+                  const UserDashboardPage(),
                   0,
                 ),
               ),
@@ -105,11 +105,11 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
               ),
               _buildCenterFAB(),
               _buildNavItem(
-                icon: Icons.warning_amber,
-                label: 'Alerts',
+                icon: Icons.assignment,
+                label: 'My Request',
                 index: 3,
                 onTap: () => _navigateToPage(
-                  const AlertPage(),
+                  const HelpRequestHistoryPage(),
                   3,
                 ),
               ),

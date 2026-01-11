@@ -26,6 +26,9 @@ class ApiConfig {
   // Dashboard Endpoint
   static const String dashboard = '/dashboard';
 
+  // Help Requests Endpoints
+  static const String helpRequests = '/help-requests';
+
   // User Profile Endpoints
   static const String profile = '/profile';
   static const String updatePassword = '/update-password';
