@@ -30,7 +30,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
   bool _isGettingLocation = false;
 
   // Files
-  List<XFile> _selectedImages = [];
+  final List<XFile> _selectedImages = [];
   XFile? _selectedVideo;
   bool _isSubmitting = false;
 

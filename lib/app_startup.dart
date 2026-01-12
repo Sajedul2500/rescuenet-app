@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'features/onboarding/domain/onboarding_service.dart';
 import 'pages/WelcomePage.dart';
-import 'pages/LoginPage.dart';
+import 'core/guards/registration_guard.dart';
+import 'core/storage/auth_storage.dart';
 
 /// Handles app startup routing logic.
-/// Decides initial route based on onboarding state.
+/// Decides initial route based on onboarding and authentication state.
 class AppStartup extends StatefulWidget {
   const AppStartup({super.key});
 
@@ -14,6 +15,7 @@ class AppStartup extends StatefulWidget {
 
 class _AppStartupState extends State<AppStartup> {
   final OnboardingService _onboardingService = OnboardingService();
+  final AuthStorage _authStorage = AuthStorage();
   bool _isLoading = true;
   bool _showWelcome = false;
 
@@ -24,15 +26,30 @@ class _AppStartupState extends State<AppStartup> {
   }
 
   /// Determines which screen to show on app startup.
-  /// This is where the routing decision happens - NOT in the Welcome Page.
+  /// Priority: Authentication > Onboarding > Welcome
   Future<void> _determineStartupRoute() async {
     try {
-      // Check if onboarding is completed
-      final isCompleted = await _onboardingService.isOnboardingCompleted();
+      // First, check if user is authenticated
+      final isAuthenticated = await _authStorage.isAuthenticated();
+
+      if (isAuthenticated) {
+        // User has token, let RegistrationGuard handle routing
+        if (mounted) {
+          setState(() {
+            _showWelcome = false;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // No authentication, check onboarding state
+      final isOnboardingCompleted =
+          await _onboardingService.isOnboardingCompleted();
 
       if (mounted) {
         setState(() {
-          _showWelcome = !isCompleted;
+          _showWelcome = !isOnboardingCompleted;
           _isLoading = false;
         });
       }
@@ -60,7 +77,9 @@ class _AppStartupState extends State<AppStartup> {
       );
     }
 
-    // Navigate to appropriate screen based on onboarding state
-    return _showWelcome ? const WelcomePage() : const LoginPage();
+    // Navigate to appropriate screen:
+    // - WelcomePage: if onboarding not completed
+    // - RegistrationGuard: if user has auth token (handles registration flow)
+    return _showWelcome ? const WelcomePage() : const RegistrationGuard();
   }
 }

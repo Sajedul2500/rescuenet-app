@@ -38,7 +38,17 @@ class _RegistrationGuardState extends State<RegistrationGuard> {
         return;
       }
 
-      // Has token → Check backend status (SINGLE SOURCE OF TRUTH)
+      // Check local registration status first
+      final isRegistrationComplete =
+          await _registrationService.isRegistrationComplete();
+
+      if (isRegistrationComplete) {
+        // Registration already complete, go straight to dashboard
+        _navigateBasedOnStep(RegistrationStep.completed);
+        return;
+      }
+
+      // Registration incomplete → Check backend status (SINGLE SOURCE OF TRUTH)
       final response = await _registrationService.getRegistrationStatus();
 
       if (!response.success) {

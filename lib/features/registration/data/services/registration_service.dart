@@ -20,8 +20,12 @@ class RegistrationService {
   /// Get current registration status from backend
   /// This is the SINGLE SOURCE OF TRUTH
   Future<ApiResponse<RegistrationStatus>> getRegistrationStatus() async {
+    // Get user_id from storage
+    final userId = await _authStorage.getUserId();
+
     return await _apiService.get(
       ApiConfig.registerStatus,
+      queryParameters: userId != null ? {'user_id': userId} : null,
       parser: (data) =>
           RegistrationStatus.fromJson(data as Map<String, dynamic>),
     );
