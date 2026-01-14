@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:RescueNetApp/pages/CreateRequestPage.dart';
 import 'package:RescueNetApp/pages/HelpRequestHistoryPage.dart';
-import 'package:RescueNetApp/pages/UserDashboardPage.dart';
+import 'package:RescueNetApp/pages/NotificationPage.dart';
+import 'package:RescueNetApp/services/notification_service.dart';
 import 'more_bottom_sheet.dart';
 import '../../../emergency_services/presentation/widgets/services_bottom_sheet.dart';
 
@@ -26,6 +27,23 @@ class DashboardBottomNav extends StatefulWidget {
 
 class _DashboardBottomNavState extends State<DashboardBottomNav> {
   int _currentIndex = 0;
+  final NotificationService _notificationService = NotificationService();
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final response = await _notificationService.getUnreadCount();
+    if (response.success && response.data != null) {
+      setState(() {
+        _unreadCount = response.data as int;
+      });
+    }
+  }
 
   void _navigateToPage(Widget page, int index) {
     setState(() {
@@ -89,13 +107,22 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildNavItem(
-                icon: Icons.dashboard,
-                label: 'Home',
+                icon: Icons.notifications,
+                label: 'Updates',
                 index: 0,
-                onTap: () => _navigateToPage(
-                  const UserDashboardPage(),
-                  0,
-                ),
+                showBadge: _unreadCount > 0,
+                badgeCount: _unreadCount,
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 0;
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationPage(),
+                    ),
+                  ).then((_) => _loadUnreadCount());
+                },
               ),
               _buildNavItem(
                 icon: Icons.location_on,
@@ -131,6 +158,8 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
     required String label,
     required int index,
     required VoidCallback onTap,
+    bool showBadge = false,
+    int badgeCount = 0,
   }) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
@@ -140,10 +169,42 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFFD32F2F) : Colors.grey[600],
-              size: 24,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  color:
+                      isSelected ? const Color(0xFFD32F2F) : Colors.grey[600],
+                  size: 24,
+                ),
+                if (showBadge && badgeCount > 0)
+                  Positioned(
+                    right: -8,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD32F2F),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          badgeCount > 99 ? '99+' : badgeCount.toString(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -174,8 +235,8 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
         );
       },
       child: Container(
-        width: 60,
-        height: 60,
+        width: 55,
+        height: 55,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFFD32F2F), Color(0xFFF44336)],

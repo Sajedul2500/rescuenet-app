@@ -18,6 +18,9 @@ class ApiConfig {
   static const String updatePassword = '/update-password';
   static const String verifyProfile = '/verify-profile';
 
+  // Notification Endpoints
+  static const String notifications = '/notifications';
+
   // Registration Endpoints
   static const String registerStep1 = '/register/step1';
   static const String registerStep2 = '/register/step2';
