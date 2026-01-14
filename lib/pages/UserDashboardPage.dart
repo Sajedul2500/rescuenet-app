@@ -156,9 +156,13 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         _headerViewModel?.updateVerificationStatus(
           isVerified: _userInfo!.isVerified,
           hasEmergencyContact: _userInfo!.hasEmergencyContact,
+          userRole: _userInfo!.role,
+          locationName: _placeName,
         );
 
         print('Dashboard data loaded: ${_helpRequests.length} help requests');
+        print(
+            'User verification status: isVerified=${_userInfo!.isVerified}, hasEmergencyContact=${_userInfo!.hasEmergencyContact}, role=${_userInfo!.role}');
       } else {
         setState(() {
           _isFetchingDashboard = false;
@@ -212,6 +216,16 @@ class _UserDashboardPageState extends State<UserDashboardPage>
             'fullAddress', locationData['address'] ?? placeName);
         await prefs.setDouble('latitude', position.latitude);
         await prefs.setDouble('longitude', position.longitude);
+
+        // Update header with location
+        if (_userInfo != null) {
+          _headerViewModel?.updateVerificationStatus(
+            isVerified: _userInfo!.isVerified,
+            hasEmergencyContact: _userInfo!.hasEmergencyContact,
+            userRole: _userInfo!.role,
+            locationName: placeName,
+          );
+        }
 
         print('Location: $placeName');
         print('Coordinates: ${position.latitude}, ${position.longitude}');

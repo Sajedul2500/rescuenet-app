@@ -8,6 +8,8 @@ class DashboardHeaderState {
   final bool isOffline;
   final String? userName;
   final String? userPhotoUrl;
+  final String? userRole;
+  final String? locationName;
 
   const DashboardHeaderState({
     required this.isIdentityVerified,
@@ -15,6 +17,8 @@ class DashboardHeaderState {
     required this.isOffline,
     this.userName,
     this.userPhotoUrl,
+    this.userRole,
+    this.locationName,
   });
 
   /// Factory for initial/loading state
@@ -33,6 +37,8 @@ class DashboardHeaderState {
     bool? isOffline,
     String? userName,
     String? userPhotoUrl,
+    String? userRole,
+    String? locationName,
   }) {
     return DashboardHeaderState(
       isIdentityVerified: isIdentityVerified ?? this.isIdentityVerified,
@@ -40,6 +46,8 @@ class DashboardHeaderState {
       isOffline: isOffline ?? this.isOffline,
       userName: userName ?? this.userName,
       userPhotoUrl: userPhotoUrl ?? this.userPhotoUrl,
+      userRole: userRole ?? this.userRole,
+      locationName: locationName ?? this.locationName,
     );
   }
 }

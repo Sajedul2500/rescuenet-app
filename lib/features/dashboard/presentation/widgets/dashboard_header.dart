@@ -39,6 +39,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
   @override
   Widget build(BuildContext context) {
     final message = widget.viewModel.currentMessage;
+    final state = widget.viewModel.state;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -54,18 +55,52 @@ class _DashboardHeaderState extends State<DashboardHeader> {
       ),
       child: SafeArea(
         bottom: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Left: App branding
-            _buildAppBranding(),
+            Row(
+              children: [
+                // Left: App branding
+                _buildAppBranding(),
 
-            // Center: Dynamic message
-            Expanded(
-              child: _buildCenterMessage(message),
+                // Center: Dynamic message
+                Expanded(
+                  child: _buildCenterMessage(message),
+                ),
+
+                // Right: Profile icon
+                _buildProfileIcon(),
+              ],
             ),
-
-            // Right: Profile icon
-            _buildProfileIcon(),
+            // Show location and role badge if both verified and has emergency contact
+            if (state.isIdentityVerified && state.hasEmergencyContact) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Location
+                  if (state.locationName != null) ...[
+                    Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        state.locationName!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.grey[700],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                  // Role badge
+                  if (state.userRole != null) ...[
+                    if (state.locationName != null) const SizedBox(width: 8),
+                    _buildRoleBadge(state.userRole!),
+                  ],
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -164,6 +199,61 @@ class _DashboardHeaderState extends State<DashboardHeader> {
       Icons.person,
       color: Colors.grey[600],
       size: 20,
+    );
+  }
+
+  Widget _buildRoleBadge(String role) {
+    // Determine role display based on verification and role
+    final state = widget.viewModel.state;
+    String displayRole;
+    Color badgeColor;
+    IconData roleIcon;
+
+    if (role == 'police') {
+      displayRole = 'Police';
+      badgeColor = Colors.blue[700]!;
+      roleIcon = Icons.local_police;
+    } else if (role == 'ambulance' || role == 'ambulance_service') {
+      displayRole = 'Ambulance';
+      badgeColor = Colors.red[700]!;
+      roleIcon = Icons.local_hospital;
+    } else if (state.isIdentityVerified && state.hasEmergencyContact) {
+      // Verified member becomes volunteer
+      displayRole = 'Volunteer';
+      badgeColor = Colors.green[700]!;
+      roleIcon = Icons.volunteer_activism;
+    } else {
+      // Unverified or no emergency contact = member
+      displayRole = 'Member';
+      badgeColor = Colors.grey[600]!;
+      roleIcon = Icons.person;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: badgeColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(roleIcon, size: 12, color: badgeColor),
+          const SizedBox(width: 4),
+          Text(
+            displayRole,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: badgeColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

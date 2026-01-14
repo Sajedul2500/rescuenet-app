@@ -42,11 +42,13 @@ class DashboardHeaderViewModel extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // TODO: Check from backend - for now always false until backend integration
-      final isVerified = false; // prefs.getBool('isIdentityVerified') ?? false;
+      // Load from SharedPreferences (will be updated by API data)
+      final isVerified = prefs.getBool('isIdentityVerified') ?? false;
       final hasContact = prefs.getBool('hasEmergencyContact') ?? false;
       final userName = prefs.getString('userName');
       final userPhoto = prefs.getString('userPhotoUrl');
+      final userRole = prefs.getString('userRole');
+      final locationName = prefs.getString('locationName');
 
       _state = DashboardHeaderState(
         isIdentityVerified: isVerified,
@@ -54,6 +56,8 @@ class DashboardHeaderViewModel extends ChangeNotifier {
         isOffline: _connectivityService.isOffline,
         userName: userName,
         userPhotoUrl: userPhoto,
+        userRole: userRole,
+        locationName: locationName,
       );
 
       _updateMessage();
@@ -131,17 +135,35 @@ class DashboardHeaderViewModel extends ChangeNotifier {
   Future<void> updateVerificationStatus({
     required bool isVerified,
     required bool hasEmergencyContact,
+    String? userRole,
+    String? locationName,
   }) async {
     try {
+      print(
+          '🔄 Updating verification status: isVerified=$isVerified, hasEmergencyContact=$hasEmergencyContact, role=$userRole, location=$locationName');
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isIdentityVerified', isVerified);
       await prefs.setBool('hasEmergencyContact', hasEmergencyContact);
+      if (userRole != null) {
+        await prefs.setString('userRole', userRole);
+      }
+      if (locationName != null) {
+        await prefs.setString('locationName', locationName);
+      }
+
       _state = _state.copyWith(
         isIdentityVerified: isVerified,
         hasEmergencyContact: hasEmergencyContact,
+        userRole: userRole,
+        locationName: locationName,
       );
       _updateMessage();
+
+      print(
+          '✅ Verification status updated. Current message: ${_currentMessage.text}');
     } catch (e) {
+      print('❌ Error updating verification status: $e');
       // Handle error silently
     }
   }

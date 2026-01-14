@@ -1,22 +1,40 @@
 import '../../../../core/api/api_config.dart';
 import '../../../../core/api/api_response.dart';
 import '../../../../core/api/api_service.dart';
+import '../../../../core/storage/auth_storage.dart';
+import 'package:dio/dio.dart';
 
 /// Dashboard Service
 /// Handles dashboard-related API calls
 class DashboardService {
   final ApiService _apiService;
+  final AuthStorage _authStorage;
 
-  DashboardService({ApiService? apiService})
-      : _apiService = apiService ?? ApiService();
+  DashboardService({ApiService? apiService, AuthStorage? authStorage})
+      : _apiService = apiService ?? ApiService(),
+        _authStorage = authStorage ?? AuthStorage();
 
   /// Get dashboard data with user location
+  /// Uses raw Dio to get full response including user object
   Future<ApiResponse<DashboardData>> getDashboardData({
     double? latitude,
     double? longitude,
   }) async {
     try {
-      final response = await _apiService.get<Map<String, dynamic>>(
+      // Get token
+      final token = await _authStorage.getToken();
+
+      // Make direct Dio call to get full response
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ));
+
+      final response = await dio.get(
         ApiConfig.dashboard,
         queryParameters: {
           if (latitude != null) 'latitude': latitude.toString(),
@@ -24,20 +42,25 @@ class DashboardService {
         },
       );
 
-      if (response.success && response.data != null) {
-        final dashboardData = DashboardData.fromJson(response.data!);
+      if (response.statusCode == 200 && response.data != null) {
+        final fullData = response.data as Map<String, dynamic>;
+
+        print('📦 Full dashboard response: $fullData');
+
+        final dashboardData = DashboardData.fromJson(fullData);
         return ApiResponse.success(
           dashboardData,
-          message: response.message,
+          message: fullData['message'] as String?,
           statusCode: response.statusCode,
         );
       } else {
         return ApiResponse.error(
-          response.message ?? 'Failed to fetch dashboard data',
+          'Failed to fetch dashboard data',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
+      print('❌ Dashboard fetch error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -81,6 +104,7 @@ class DashboardData {
           : UserInfo(
               id: 0,
               name: 'Unknown',
+              role: 'member',
               isVerified: false,
               hasEmergencyContact: false),
       helpRequests: helpRequestsList
@@ -95,12 +119,14 @@ class DashboardData {
 class UserInfo {
   final int id;
   final String name;
+  final String role;
   final bool isVerified;
   final bool hasEmergencyContact;
 
   UserInfo({
     required this.id,
     required this.name,
+    required this.role,
     required this.isVerified,
     required this.hasEmergencyContact,
   });
@@ -109,6 +135,7 @@ class UserInfo {
     return UserInfo(
       id: json['id'] as int? ?? 0,
       name: json['name']?.toString() ?? 'User',
+      role: json['role']?.toString() ?? 'member',
       isVerified: json['is_verified'] as bool? ?? false,
       hasEmergencyContact: json['has_emergency_contact'] as bool? ?? false,
     );
