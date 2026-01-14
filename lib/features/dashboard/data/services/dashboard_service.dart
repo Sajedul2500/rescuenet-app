@@ -64,6 +64,90 @@ class DashboardService {
       return ApiResponse.error('Unexpected error: $e');
     }
   }
+
+  /// Get detailed help request by ID
+  Future<ApiResponse<HelpRequestDetail>> getHelpRequestDetails(
+      int requestId) async {
+    try {
+      final token = await _authStorage.getToken();
+
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ));
+
+      final response = await dio.get('${ApiConfig.helpRequests}/$requestId');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final fullData = response.data as Map<String, dynamic>;
+        final detailData = fullData['data'] as Map<String, dynamic>;
+
+        final helpRequestDetail = HelpRequestDetail.fromJson(detailData);
+        return ApiResponse.success(
+          helpRequestDetail,
+          message: fullData['message'] as String?,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          'Failed to fetch help request details',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      print('❌ Help request details fetch error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  /// Respond to a help request
+  Future<ApiResponse<Map<String, dynamic>>> respondToHelpRequest({
+    required int requestId,
+    required String action,
+    String? note,
+  }) async {
+    try {
+      final token = await _authStorage.getToken();
+
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ));
+
+      final response = await dio.post(
+        '${ApiConfig.helpRequests}/$requestId/respond',
+        data: {
+          'action': action,
+          if (note != null && note.isNotEmpty) 'note': note,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final fullData = response.data as Map<String, dynamic>;
+        return ApiResponse.success(
+          fullData,
+          message: fullData['message'] as String?,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          'Failed to respond to help request',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      print('❌ Respond to help request error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
 }
 
 /// Dashboard Data Model
@@ -77,11 +161,6 @@ class DashboardData {
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
-    // The API response structure is:
-    // { "success": true, "user": {...}, "data": { "help_requests": [...] } }
-    // But api_service.dart passes data['data'] to parser if it exists
-    // So we need to handle both cases
-
     Map<String, dynamic>? userData;
     List? helpRequestsList;
 
@@ -224,6 +303,197 @@ class HelpRequest {
       return '${(distance! * 1000).toStringAsFixed(0)} m';
     } else {
       return '${distance!.toStringAsFixed(1)} km';
+    }
+  }
+}
+
+/// Detailed Help Request Model
+class HelpRequestDetail {
+  final int id;
+  final RequestedUser requestedUser;
+  final String type;
+  final String description;
+  final RequestLocation location;
+  final List<AttachedFile> attachedFiles;
+  final List<RequestLog> requestLogs;
+  final String status;
+  final String? createdAt;
+  final String? updatedAt;
+
+  HelpRequestDetail({
+    required this.id,
+    required this.requestedUser,
+    required this.type,
+    required this.description,
+    required this.location,
+    required this.attachedFiles,
+    required this.requestLogs,
+    required this.status,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory HelpRequestDetail.fromJson(Map<String, dynamic> json) {
+    return HelpRequestDetail(
+      id: json['id'] as int,
+      requestedUser: RequestedUser.fromJson(
+          json['requested_user'] as Map<String, dynamic>),
+      type: json['type']?.toString() ?? 'Emergency',
+      description: json['description']?.toString() ?? '',
+      location: RequestLocation.fromJson(
+          json['location'] as Map<String, dynamic>? ?? {}),
+      attachedFiles: (json['attached_files'] as List?)
+              ?.map((e) => AttachedFile.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      requestLogs: (json['request_logs'] as List?)
+              ?.map((e) => RequestLog.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      status: json['status']?.toString() ?? 'pending',
+      createdAt: json['created_at']?.toString(),
+      updatedAt: json['updated_at']?.toString(),
+    );
+  }
+
+  String get timeAgo {
+    if (createdAt == null) return 'Recently';
+    try {
+      final dateTime = DateTime.parse(createdAt!);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} min ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else {
+        return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
+  }
+}
+
+class RequestedUser {
+  final String name;
+  final String phone;
+
+  RequestedUser({required this.name, required this.phone});
+
+  factory RequestedUser.fromJson(Map<String, dynamic> json) {
+    return RequestedUser(
+      name: json['name']?.toString() ?? 'Unknown',
+      phone: json['phone']?.toString() ?? 'N/A',
+    );
+  }
+}
+
+class RequestLocation {
+  final double? latitude;
+  final double? longitude;
+  final String? name;
+
+  RequestLocation({this.latitude, this.longitude, this.name});
+
+  factory RequestLocation.fromJson(Map<String, dynamic> json) {
+    return RequestLocation(
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      name: json['name']?.toString(),
+    );
+  }
+
+  String get coordinatesText {
+    if (latitude != null && longitude != null) {
+      return '${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}';
+    }
+    return 'N/A';
+  }
+}
+
+class AttachedFile {
+  final int id;
+  final String url;
+  final String uploadedAt;
+
+  AttachedFile({
+    required this.id,
+    required this.url,
+    required this.uploadedAt,
+  });
+
+  factory AttachedFile.fromJson(Map<String, dynamic> json) {
+    return AttachedFile(
+      id: json['id'] as int,
+      url: json['url']?.toString() ?? '',
+      uploadedAt: json['uploaded_at']?.toString() ?? '',
+    );
+  }
+
+  bool get isVideo {
+    final lowerUrl = url.toLowerCase();
+    return lowerUrl.endsWith('.mp4') ||
+        lowerUrl.endsWith('.mov') ||
+        lowerUrl.endsWith('.avi') ||
+        lowerUrl.contains('video');
+  }
+
+  bool get isImage {
+    final lowerUrl = url.toLowerCase();
+    return lowerUrl.endsWith('.jpg') ||
+        lowerUrl.endsWith('.jpeg') ||
+        lowerUrl.endsWith('.png') ||
+        lowerUrl.endsWith('.gif') ||
+        lowerUrl.contains('image');
+  }
+}
+
+class RequestLog {
+  final int id;
+  final String performedBy;
+  final String action;
+  final String? note;
+  final String performedAt;
+
+  RequestLog({
+    required this.id,
+    required this.performedBy,
+    required this.action,
+    this.note,
+    required this.performedAt,
+  });
+
+  factory RequestLog.fromJson(Map<String, dynamic> json) {
+    return RequestLog(
+      id: json['id'] as int,
+      performedBy: json['performed_by']?.toString() ?? 'System',
+      action: json['action']?.toString() ?? '',
+      note: json['note']?.toString(),
+      performedAt: json['performed_at']?.toString() ?? '',
+    );
+  }
+
+  String get timeAgo {
+    try {
+      final dateTime = DateTime.parse(performedAt);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} min ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else {
+        return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      }
+    } catch (e) {
+      return 'Recently';
     }
   }
 }
