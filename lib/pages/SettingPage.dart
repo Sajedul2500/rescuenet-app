@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'LoginPage.dart';
+import 'UserProfilePage.dart';
 import '../features/auth/data/services/auth_service.dart';
 
 class SettingPage extends StatefulWidget {
@@ -16,11 +17,90 @@ class _SettingsPageState extends State<SettingPage> {
   bool _notificationsEnabled = true;
   bool _locationSharing = true;
   String _selectedLanguage = 'English';
+  bool _isLoading = true;
 
   final List<String> _languages = ['English', 'বাংলা (Bangla)'];
 
   @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+      _locationSharing = prefs.getBool('locationSharing') ?? true;
+      _selectedLanguage = prefs.getString('selectedLanguage') ?? 'English';
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _saveNotificationSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notificationsEnabled', value);
+    setState(() {
+      _notificationsEnabled = value;
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value ? 'Notifications enabled' : 'Notifications disabled',
+            style: GoogleFonts.poppins(),
+          ),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveLocationSharingSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('locationSharing', value);
+    setState(() {
+      _locationSharing = value;
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value ? 'Location sharing enabled' : 'Location sharing disabled',
+            style: GoogleFonts.poppins(),
+          ),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveLanguageSetting(String language) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedLanguage', language);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFD32F2F),
+          centerTitle: true,
+          title: Text(
+            'Settings',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFD32F2F),
@@ -51,7 +131,7 @@ class _SettingsPageState extends State<SettingPage> {
               _buildSwitchTile(
                 title: 'Enable Notifications',
                 value: _notificationsEnabled,
-                onChanged: (val) => setState(() => _notificationsEnabled = val),
+                onChanged: (val) => _saveNotificationSetting(val),
               ),
             ],
           ),
@@ -62,7 +142,7 @@ class _SettingsPageState extends State<SettingPage> {
               _buildSwitchTile(
                 title: 'Location Sharing',
                 value: _locationSharing,
-                onChanged: (val) => setState(() => _locationSharing = val),
+                onChanged: (val) => _saveLocationSharingSetting(val),
               ),
             ],
           ),
@@ -75,9 +155,11 @@ class _SettingsPageState extends State<SettingPage> {
                 title: Text('Change Password',
                     style: GoogleFonts.poppins(fontSize: 14)),
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Change password feature coming soon!')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserProfilePage(),
+                    ),
                   );
                 },
               ),
@@ -146,14 +228,23 @@ class _SettingsPageState extends State<SettingPage> {
       title: Text('Language', style: GoogleFonts.poppins(fontSize: 14)),
       trailing: DropdownButton<String>(
         value: _selectedLanguage,
-        onChanged: (String? newValue) {
+        onChanged: (String? newValue) async {
           if (newValue != null) {
+            await _saveLanguageSetting(newValue);
             setState(() {
               _selectedLanguage = newValue;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Language set to $_selectedLanguage')),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Language set to $_selectedLanguage',
+                    style: GoogleFonts.poppins(),
+                  ),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            }
           }
         },
         items: _languages.map<DropdownMenuItem<String>>((String lang) {

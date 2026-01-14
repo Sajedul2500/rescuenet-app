@@ -15,16 +15,31 @@ class DashboardService {
     double? latitude,
     double? longitude,
   }) async {
-    final response = await _apiService.get<DashboardData>(
-      ApiConfig.dashboard,
-      queryParameters: {
-        if (latitude != null) 'latitude': latitude.toString(),
-        if (longitude != null) 'longitude': longitude.toString(),
-      },
-      parser: (data) => DashboardData.fromJson(data as Map<String, dynamic>),
-    );
+    try {
+      final response = await _apiService.get<Map<String, dynamic>>(
+        ApiConfig.dashboard,
+        queryParameters: {
+          if (latitude != null) 'latitude': latitude.toString(),
+          if (longitude != null) 'longitude': longitude.toString(),
+        },
+      );
 
-    return response;
+      if (response.success && response.data != null) {
+        final dashboardData = DashboardData.fromJson(response.data!);
+        return ApiResponse.success(
+          dashboardData,
+          message: response.message,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          response.message ?? 'Failed to fetch dashboard data',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Unexpected error: $e');
+    }
   }
 }
 
@@ -39,9 +54,36 @@ class DashboardData {
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
+    // The API response structure is:
+    // { "success": true, "user": {...}, "data": { "help_requests": [...] } }
+    // But api_service.dart passes data['data'] to parser if it exists
+    // So we need to handle both cases
+
+    Map<String, dynamic>? userData;
+    List? helpRequestsList;
+
+    // Case 1: Full response passed (has 'user' at root)
+    if (json.containsKey('user')) {
+      userData = json['user'] as Map<String, dynamic>?;
+      final dataObj = json['data'] as Map<String, dynamic>?;
+      helpRequestsList = dataObj?['help_requests'] as List?;
+    }
+    // Case 2: Only nested 'data' object passed (has 'help_requests' at root)
+    else if (json.containsKey('help_requests')) {
+      // This case shouldn't happen with current API structure, but handle it
+      userData = null;
+      helpRequestsList = json['help_requests'] as List?;
+    }
+
     return DashboardData(
-      user: UserInfo.fromJson(json['user'] as Map<String, dynamic>),
-      helpRequests: (json['help_requests'] as List?)
+      user: userData != null
+          ? UserInfo.fromJson(userData)
+          : UserInfo(
+              id: 0,
+              name: 'Unknown',
+              isVerified: false,
+              hasEmergencyContact: false),
+      helpRequests: helpRequestsList
               ?.map((e) => HelpRequest.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
