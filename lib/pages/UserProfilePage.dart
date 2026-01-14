@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:RescueNetApp/services/user_profile_service.dart';
+import 'package:RescueNetBD/services/user_profile_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});

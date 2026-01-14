@@ -3,15 +3,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:RescueNetApp/services/geocoding_service.dart';
-import 'package:RescueNetApp/services/weather_service.dart';
-import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_bottom_nav.dart';
-import 'package:RescueNetApp/features/dashboard/presentation/widgets/dashboard_header.dart';
-import 'package:RescueNetApp/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart';
-import 'package:RescueNetApp/features/dashboard/data/services/dashboard_service.dart';
-import 'package:RescueNetApp/pages/EmergencyContactPage.dart';
-import 'package:RescueNetApp/pages/UserProfilePage.dart';
-import 'package:RescueNetApp/pages/HelpRequestDetailsPage.dart';
+import 'package:RescueNetBD/services/geocoding_service.dart';
+import 'package:RescueNetBD/services/weather_service.dart';
+import 'package:RescueNetBD/features/dashboard/presentation/widgets/dashboard_bottom_nav.dart';
+import 'package:RescueNetBD/features/dashboard/presentation/widgets/dashboard_header.dart';
+import 'package:RescueNetBD/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart';
+import 'package:RescueNetBD/features/dashboard/data/services/dashboard_service.dart';
+import 'package:RescueNetBD/pages/EmergencyContactPage.dart';
+import 'package:RescueNetBD/pages/UserProfilePage.dart';
+import 'package:RescueNetBD/pages/HelpRequestDetailsPage.dart';
 
 class UserDashboardPage extends StatefulWidget {
   final Map<String, dynamic>? userData;

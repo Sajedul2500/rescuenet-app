@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:RescueNetApp/features/dashboard/data/services/dashboard_service.dart';
-import 'package:RescueNetApp/services/user_profile_service.dart';
-import 'package:RescueNetApp/pages/UserProfilePage.dart';
+import 'package:RescueNetBD/features/dashboard/data/services/dashboard_service.dart';
+import 'package:RescueNetBD/services/user_profile_service.dart';
+import 'package:RescueNetBD/pages/UserProfilePage.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';

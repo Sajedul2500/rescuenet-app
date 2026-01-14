@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:RescueNetApp/services/geocoding_service.dart';
+import 'package:RescueNetBD/services/geocoding_service.dart';
 import 'UserDashboardPage.dart';
 import '../features/registration/data/services/registration_service.dart';
 import '../features/registration/domain/models/registration_models.dart';

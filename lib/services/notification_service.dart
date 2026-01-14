@@ -1,6 +1,6 @@
-import 'package:RescueNetApp/core/api/api_service.dart';
-import 'package:RescueNetApp/core/api/api_config.dart';
-import 'package:RescueNetApp/core/api/api_response.dart';
+import 'package:RescueNetBD/core/api/api_service.dart';
+import 'package:RescueNetBD/core/api/api_config.dart';
+import 'package:RescueNetBD/core/api/api_response.dart';
 
 class NotificationItem {
   final int id;
