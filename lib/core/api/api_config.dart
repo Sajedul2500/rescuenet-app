@@ -13,6 +13,9 @@ class ApiConfig {
   // Help Requests Endpoints
   static const String helpRequests = '/help-requests';
 
+  // Flag Reports Endpoint
+  static const String flagReports = '/flag-reports';
+
   // User Profile Endpoints
   static const String profile = '/profile';
   static const String updatePassword = '/update-password';
@@ -27,6 +30,10 @@ class ApiConfig {
   static const String registerStep3 = '/register/step3';
   static const String registerSkipStep2 = '/register/skip-step2';
   static const String registerStatus = '/register/status';
+
+  // More Services Endpoints
+  static const String emergencyContacts = '/more-service/emergency-contacts';
+  static const String nearbyVolunteers = '/more-service/nearby-volunteers';
 
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
