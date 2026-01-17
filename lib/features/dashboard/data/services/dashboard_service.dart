@@ -148,6 +148,55 @@ class DashboardService {
       return ApiResponse.error('Unexpected error: $e');
     }
   }
+
+  /// Submit a flag report for a help request
+  Future<ApiResponse<Map<String, dynamic>>> submitFlagReport({
+    required int requestId,
+    required String reportType,
+    required String reportReason,
+    String? reportAttachment,
+  }) async {
+    try {
+      final token = await _authStorage.getToken();
+
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ));
+
+      final response = await dio.post(
+        ApiConfig.flagReports,
+        data: {
+          'request_id': requestId,
+          'report_type': reportType,
+          'report_reason': reportReason,
+          if (reportAttachment != null && reportAttachment.isNotEmpty)
+            'report_attachment': reportAttachment,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final fullData = response.data as Map<String, dynamic>;
+        return ApiResponse.success(
+          fullData,
+          message: fullData['message'] as String?,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          'Failed to submit flag report',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      print('❌ Submit flag report error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
 }
 
 /// Dashboard Data Model
@@ -234,6 +283,7 @@ class HelpRequest {
   final String status;
   final String createdAt;
   final double? distance;
+  final int flagsCount;
 
   HelpRequest({
     required this.id,
@@ -247,6 +297,7 @@ class HelpRequest {
     required this.status,
     required this.createdAt,
     this.distance,
+    this.flagsCount = 0,
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) {
@@ -274,6 +325,7 @@ class HelpRequest {
       createdAt:
           json['created_at']?.toString() ?? DateTime.now().toIso8601String(),
       distance: distance,
+      flagsCount: json['flagsCount'] as int? ?? 0,
     );
   }
 
@@ -316,6 +368,7 @@ class HelpRequestDetail {
   final RequestLocation location;
   final List<AttachedFile> attachedFiles;
   final List<RequestLog> requestLogs;
+  final List<FlaggedReport> flaggedReports;
   final String status;
   final String? createdAt;
   final String? updatedAt;
@@ -328,6 +381,7 @@ class HelpRequestDetail {
     required this.location,
     required this.attachedFiles,
     required this.requestLogs,
+    required this.flaggedReports,
     required this.status,
     this.createdAt,
     this.updatedAt,
@@ -348,6 +402,10 @@ class HelpRequestDetail {
           [],
       requestLogs: (json['request_logs'] as List?)
               ?.map((e) => RequestLog.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      flaggedReports: (json['flagged_reports'] as List?)
+              ?.map((e) => FlaggedReport.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       status: json['status']?.toString() ?? 'pending',
@@ -495,5 +553,22 @@ class RequestLog {
     } catch (e) {
       return 'Recently';
     }
+  }
+}
+
+class FlaggedReport {
+  final int id;
+  final int reportedUserId;
+
+  FlaggedReport({
+    required this.id,
+    required this.reportedUserId,
+  });
+
+  factory FlaggedReport.fromJson(Map<String, dynamic> json) {
+    return FlaggedReport(
+      id: json['id'] as int,
+      reportedUserId: json['reported_user_id'] as int,
+    );
   }
 }

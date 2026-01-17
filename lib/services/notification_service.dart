@@ -116,7 +116,7 @@ class NotificationService {
     try {
       final response = await _apiService.post<void>(
         '${ApiConfig.notifications}/mark-all-read',
-        parser: (_) => null,
+        parser: (_) {},
       );
 
       return response;
@@ -130,7 +130,7 @@ class NotificationService {
     try {
       final response = await _apiService.delete<void>(
         '${ApiConfig.notifications}/$notificationId',
-        parser: (_) => null,
+        parser: (_) {},
       );
 
       return response;
@@ -144,7 +144,7 @@ class NotificationService {
     try {
       final response = await _apiService.delete<void>(
         '${ApiConfig.notifications}/delete-all',
-        parser: (_) => null,
+        parser: (_) {},
       );
 
       return response;

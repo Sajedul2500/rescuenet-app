@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:RescueNetBD/features/dashboard/data/services/dashboard_service.dart';
 import 'package:RescueNetBD/services/user_profile_service.dart';
 import 'package:RescueNetBD/pages/UserProfilePage.dart';
+import 'package:RescueNetBD/core/storage/auth_storage.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,14 +22,30 @@ class HelpRequestDetailsPage extends StatefulWidget {
 class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
   final DashboardService _dashboardService = DashboardService();
   final UserProfileService _profileService = UserProfileService();
+  final AuthStorage _authStorage = AuthStorage();
   HelpRequestDetail? _detailData;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _hasCurrentUserFlagged = false;
 
   @override
   void initState() {
     super.initState();
     _fetchDetails();
+  }
+
+  Future<bool> _checkIfUserFlagged(HelpRequestDetail data) async {
+    try {
+      final userId = await _authStorage.getUserId();
+      if (userId == null) return false;
+      final userIdInt = int.tryParse(userId);
+      if (userIdInt == null) return false;
+
+      return data.flaggedReports
+          .any((report) => report.reportedUserId == userIdInt);
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> _fetchDetails() async {
@@ -42,8 +59,12 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
           await _dashboardService.getHelpRequestDetails(widget.request.id);
 
       if (response.success && response.data != null) {
+        // Check if current user has flagged
+        final hasFlagged = await _checkIfUserFlagged(response.data!);
+
         setState(() {
           _detailData = response.data;
+          _hasCurrentUserFlagged = hasFlagged;
           _isLoading = false;
         });
       } else {
@@ -77,6 +98,20 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          if (_detailData != null)
+            IconButton(
+              icon: Icon(
+                _hasCurrentUserFlagged ? Icons.flag : Icons.flag_outlined,
+                color: _hasCurrentUserFlagged ? Colors.orange : Colors.white,
+              ),
+              tooltip:
+                  _hasCurrentUserFlagged ? 'Already Flagged' : 'Report Issue',
+              onPressed: _hasCurrentUserFlagged
+                  ? null
+                  : () => _showFlagReportDialog(color),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -633,45 +668,88 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _shareRequestDetails(),
-                icon: const Icon(Icons.share),
-                label: Text(
-                  'Share',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: color,
-                  side: BorderSide(color: color, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (_hasCurrentUserFlagged)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: () => _checkVerificationAndRespond(color),
-                icon: const Icon(Icons.volunteer_activism),
-                label: Text(
-                  'Respond',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.flag,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You have flagged this request. Response action is disabled.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.orange[900],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _shareRequestDetails(),
+                    icon: const Icon(Icons.share),
+                    label: Text(
+                      'Share',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: color,
+                      side: BorderSide(color: color, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: _hasCurrentUserFlagged
+                        ? null
+                        : () => _checkVerificationAndRespond(color),
+                    icon: const Icon(Icons.volunteer_activism),
+                    label: Text(
+                      'Respond',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          _hasCurrentUserFlagged ? Colors.grey : color,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      disabledBackgroundColor: Colors.grey[300],
+                      disabledForegroundColor: Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -830,6 +908,332 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
           SnackBar(
             content: Text(
               'Error: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFlagReportDialog(Color color) async {
+    // Check verification first
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+
+      final profileResponse = await _profileService.getProfile();
+
+      if (mounted) Navigator.pop(context);
+
+      if (!profileResponse.success || profileResponse.data == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to verify account. Please try again.',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!profileResponse.data!.isVerified) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber,
+                      color: Colors.orange, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Verification Required',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'Only verified users can flag help requests. Please complete your verification first.',
+                style: GoogleFonts.poppins(fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UserProfilePage(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Get Verified',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      // User is verified - show flag report form
+      if (mounted) {
+        _showFlagReportForm(color);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showFlagReportForm(Color color) {
+    final reasonController = TextEditingController();
+    String selectedType = 'Invalid Location';
+    final reportTypes = ['Invalid Location', 'Unclear Request', 'Other'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.flag, color: Colors.orange),
+              const SizedBox(width: 12),
+              Text(
+                'Report Issue',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Help us maintain quality by reporting issues with this request.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Report Type *',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedType,
+                      isExpanded: true,
+                      items: reportTypes.map((type) {
+                        return DropdownMenuItem(
+                          value: type,
+                          child: Text(
+                            type,
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedType = value!;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Reason *',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Describe the issue...',
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey[400],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (reasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please provide a reason for flagging',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                await _submitFlagReport(
+                    selectedType, reasonController.text.trim());
+              },
+              icon: const Icon(Icons.send, size: 18),
+              label: Text(
+                'Submit',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitFlagReport(String reportType, String reportReason) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+
+    try {
+      final response = await _dashboardService.submitFlagReport(
+        requestId: widget.request.id,
+        reportType: reportType,
+        reportReason: reportReason,
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (response.success) {
+        await _fetchDetails();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Flag report submitted successfully',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to submit flag report',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: $e',
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: Colors.red,

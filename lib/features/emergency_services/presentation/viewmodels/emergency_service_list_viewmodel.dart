@@ -6,6 +6,7 @@ import '../../domain/repositories/emergency_service_repository.dart';
 /// Handles business logic and state management.
 class EmergencyServiceListViewModel extends ChangeNotifier {
   final EmergencyServiceRepository _repository;
+  bool _disposed = false;
 
   EmergencyServiceListViewModel(this._repository);
 
@@ -32,7 +33,7 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _searchQuery = null;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       _services = await _repository.getNearbyServices(
@@ -47,7 +48,7 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
       _services = [];
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -73,7 +74,7 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _searchQuery = query;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       _services = await _repository.searchServices(
@@ -88,7 +89,7 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
       _services = [];
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -117,7 +118,7 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
   /// Clears error message
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   /// Gets user-friendly error message
@@ -139,4 +140,16 @@ class EmergencyServiceListViewModel extends ChangeNotifier {
     }
   }
 
+  /// Safe notifyListeners that checks if disposed
+  void _notifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 }
