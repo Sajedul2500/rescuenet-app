@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/more_service.dart';
 
 class NearByVolunteersPage extends StatefulWidget {
@@ -511,17 +512,42 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
                   ),
                 ),
                 onPressed: user?.phone != null
-                    ? () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Contact: ${user!.phone}',
-                              style: GoogleFonts.poppins(),
-                            ),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                    ? () async {
+                        final phoneNumber =
+                            user!.phone!.replaceAll(RegExp(r'[^0-9+]'), '');
+                        final uri = Uri.parse('tel:$phoneNumber');
+
+                        try {
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Unable to make call. Phone: ${user.phone}',
+                                    style: GoogleFonts.poppins(),
+                                  ),
+                                  backgroundColor: Colors.orange,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Error making call: $e',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
                       }
                     : null,
               ),
