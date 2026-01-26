@@ -64,11 +64,13 @@ class LoginResponse {
   final String message;
   final UserData user;
   final String token;
+  final bool hasLocationInfo;
 
   LoginResponse({
     required this.message,
     required this.user,
     required this.token,
+    required this.hasLocationInfo,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -76,6 +78,7 @@ class LoginResponse {
       message: json['message']?.toString() ?? '',
       user: UserData.fromJson(json['user'] as Map<String, dynamic>),
       token: json['token']?.toString() ?? '',
+      hasLocationInfo: json['hasLocationInfo'] as bool? ?? true,
     );
   }
 }

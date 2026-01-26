@@ -1,7 +1,7 @@
 /// API Configuration Constants
 class ApiConfig {
-  static const String baseUrl = 'http://110.76.128.74:8777/api/v1';
-  // static const String baseUrl = 'http://192.168.68.119:8000/api/v1';
+  // static const String baseUrl = 'http://110.76.128.74:8777/api/v1';
+  static const String baseUrl = 'http://192.168.68.119:8000/api/v1';
 
   // Authentication Endpoints
   static const String login = '/login';
@@ -30,6 +30,7 @@ class ApiConfig {
   static const String registerStep3 = '/register/step3';
   static const String registerSkipStep2 = '/register/skip-step2';
   static const String registerStatus = '/register/status';
+  static const String completeRegistration = '/complete-registration';
 
   // More Services Endpoints
   static const String emergencyContacts = '/more-service/emergency-contacts';
