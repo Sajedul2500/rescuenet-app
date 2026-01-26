@@ -1,7 +1,5 @@
 import '../../domain/entities/emergency_guidance.dart';
 
-/// Offline data source containing hardcoded emergency guidance.
-/// Content is embedded in the app for offline access.
 class OfflineGuidanceDataSource {
   static final List<EmergencyGuidance> _guidanceData = [
     // Fire Emergency
