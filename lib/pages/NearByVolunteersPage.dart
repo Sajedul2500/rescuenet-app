@@ -156,7 +156,7 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
                   Navigator.pop(context, value);
                 },
               );
-            }).toList(),
+            }),
           ],
         ),
         actions: [

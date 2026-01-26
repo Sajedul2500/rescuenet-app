@@ -1,18 +1,15 @@
 import '../../../../core/api/api_config.dart';
 import '../../../../core/api/api_response.dart';
-import '../../../../core/api/api_service.dart';
 import '../../../../core/storage/auth_storage.dart';
 import 'package:dio/dio.dart';
 
 /// Dashboard Service
 /// Handles dashboard-related API calls
 class DashboardService {
-  final ApiService _apiService;
   final AuthStorage _authStorage;
 
-  DashboardService({ApiService? apiService, AuthStorage? authStorage})
-      : _apiService = apiService ?? ApiService(),
-        _authStorage = authStorage ?? AuthStorage();
+  DashboardService({AuthStorage? authStorage})
+      : _authStorage = authStorage ?? AuthStorage();
 
   /// Get dashboard data with user location
   /// Uses raw Dio to get full response including user object
