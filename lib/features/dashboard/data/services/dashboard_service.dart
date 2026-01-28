@@ -142,6 +142,19 @@ class DashboardService {
       }
     } catch (e) {
       print('❌ Respond to help request error: $e');
+
+      // Extract error message from DioException if available
+      if (e is DioException && e.response != null) {
+        final responseData = e.response!.data;
+        if (responseData is Map<String, dynamic> &&
+            responseData.containsKey('message')) {
+          return ApiResponse.error(
+            responseData['message'] as String,
+            statusCode: e.response!.statusCode,
+          );
+        }
+      }
+
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -192,6 +205,19 @@ class DashboardService {
       }
     } catch (e) {
       print('❌ Submit flag report error: $e');
+
+      // Extract error message from DioException if available
+      if (e is DioException && e.response != null) {
+        final responseData = e.response!.data;
+        if (responseData is Map<String, dynamic> &&
+            responseData.containsKey('message')) {
+          return ApiResponse.error(
+            responseData['message'] as String,
+            statusCode: e.response!.statusCode,
+          );
+        }
+      }
+
       return ApiResponse.error('Unexpected error: $e');
     }
   }

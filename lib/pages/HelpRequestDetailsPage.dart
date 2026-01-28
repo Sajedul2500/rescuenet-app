@@ -1319,6 +1319,7 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -1554,6 +1555,7 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
