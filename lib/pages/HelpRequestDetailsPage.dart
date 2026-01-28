@@ -252,6 +252,44 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _hasCurrentUserFlagged
+                            ? null
+                            : () => _showFlagReportDialog(color),
+                        icon: Icon(
+                          _hasCurrentUserFlagged
+                              ? Icons.flag
+                              : Icons.flag_outlined,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _hasCurrentUserFlagged
+                              ? 'Already Reported'
+                              : 'Report Request',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _hasCurrentUserFlagged
+                              ? Colors.grey
+                              : Colors.orange,
+                          side: BorderSide(
+                            color: _hasCurrentUserFlagged
+                                ? Colors.grey
+                                : Colors.orange,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
 
