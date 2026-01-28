@@ -1,262 +1,201 @@
-# RescueNet AI Coding Agent Instructions
-
-## Project Overview
-
-RescueNet is an emergency response Flutter app connecting users with rescue services. This is a final-year academic project being actively refactored from legacy page-based architecture to clean feature-based architecture.
-
-## Critical Architecture Context
-
-### 🚨 Active Migration State
-
-The codebase is in **TRANSITION**:
-
-- **Legacy**: `lib/pages/` - Contains old monolithic screens (LoginPage.dart, CreateRequestPage.dart, etc.)
-- **Target**: `lib/features/` - New feature-based modules with data/domain/presentation layers
-- **Status**: Dashboard, auth, emergency_services, emergency_guidance modules partially migrated
-
-**When modifying code:**
-
-- New features → MUST use `lib/features/<feature>/` structure
-- Existing pages → Refactor to features when touching them substantially
-- Quick fixes → Can stay in pages/, but flag for migration
-
-### Feature-Based Structure (Mandatory for New Code)
-
-```
-lib/features/<feature>/
-  ├── data/           # API calls, repository implementations
-  ├── domain/         # Entities, abstract repos, services
-  └── presentation/   # Widgets, screens, viewmodels
-```
-
-Example: `lib/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart`
-
-## Core System Patterns
-
-### 1. API Service Layer (`lib/core/api/`)
-
-**All API calls go through ApiService with ApiResponse wrapper:**
-
-```dart
-final response = await _apiService.get<UserProfile>(
-  ApiConfig.profile,
-  parser: (data) => UserProfile.fromJson(data as Map<String, dynamic>),
-);
-
-if (response.success) {
-  // Use response.data
-}
-```
-
-**Key files:**
-
-- `api_service.dart` - Dio-based HTTP client with auto token injection
-- `api_config.dart` - Endpoint constants (baseUrl: `http://110.76.128.74:8777/api/v1`)
-- `api_response.dart` - Unified response wrapper
-
-**Pattern:** Never call HTTP directly. Always use ApiService with typed parsers.
-
-### 2. Authentication & Storage
-
-- **Token management**: `lib/core/storage/auth_storage.dart` uses flutter_secure_storage
-- **Auto-injection**: ApiService interceptor adds `Bearer` token to all requests
-- **Multi-step registration**: Tokens persist across registration steps (step1 → step2 → step3)
-
-### 3. State Management
-
-**Current approach: Provider + ChangeNotifier**
-
-```dart
-class DashboardHeaderViewModel extends ChangeNotifier {
-  // Business logic here
-  void updateState() {
-    _state = newState;
-    notifyListeners();
-  }
-}
-```
-
-**Rules:**
-
-- ViewModels MUST extend ChangeNotifier (not Riverpod yet)
-- ViewModels live in `features/<feature>/presentation/viewmodels/`
-- UI binds via `ChangeNotifierProvider` or direct instantiation
-- No BuildContext in business logic
-
-### 4. App Startup Flow
-
-Critical routing logic chain:
-
-1. `main.dart` → RegistrationGuard
-2. `registration_guard.dart` checks backend `/register/status` (single source of truth)
-3. Routes to: WelcomePage | RegistrationStep1/2/3 | UserDashboardPage
-
-**Why this matters:** User state is backend-driven. Don't cache registration status assumptions locally beyond the guard.
-
-### 5. User Verification System
-
-**New pattern (as of latest changes):**
-
-- Check `UserProfile.isVerified` before critical actions (e.g., CreateRequestPage)
-- Use `UserProfileService` to fetch profile: `await _profileService.getProfile()`
-- Block unverified users with clear dialogs explaining verification requirements
-
-**Example implementation:** See `CreateRequestPage.dart` lines 62-160 for verification check pattern.
-
-## Common Tasks & Patterns
-
-### Adding a New Feature Module
-
-```bash
-lib/features/my_feature/
-  ├── data/services/my_feature_service.dart       # API calls
-  ├── domain/models/my_feature_model.dart         # Data models
-  ├── presentation/
-      ├── screens/my_feature_screen.dart          # UI screens
-      ├── widgets/my_feature_widget.dart          # Reusable components
-      └── viewmodels/my_feature_viewmodel.dart    # Business logic
-```
-
-### Working with Forms & Validation
-
-**Existing pattern in pages/:**
-
-- Use `_formKey = GlobalKey<FormState>()`
-- TextFormField with inline validators
-- Submit only after `_formKey.currentState!.validate()`
-
-**Best practice:** Migrate validation logic to ViewModels for testability.
-
-### File Upload Pattern
-
-```dart
-final formData = FormData.fromMap({
-  'field': 'value',
-  'files[]': await MultipartFile.fromFile(path, filename: 'file.jpg'),
-});
-
-final response = await _apiService.postMultipart<ResponseType>(
-  '/endpoint',
-  data: formData,
-  parser: (data) => ResponseType.fromJson(data),
-);
-```
-
-See: `CreateRequestPage.dart` lines 270-300 for image/video upload example.
-
-### Location Services
-
-**Pattern:**
-
-1. Request permission: `await Permission.location.request()`
-2. Get position: `await Geolocator.getCurrentPosition()`
-3. Geocode (optional): Use `GeocodingService.getPlaceFromCoordinates()`
-
-**Location always required for help requests.**
-
-## Project-Specific Conventions
-
-### Naming
-
-- ViewModels: `<Feature><Purpose>ViewModel` (e.g., DashboardHeaderViewModel)
-- Services: `<Feature>Service` (e.g., UserProfileService)
-- Models: Descriptive nouns (e.g., UserProfile, DashboardHeaderState)
-
-### Error Handling
-
-**Preferred pattern:**
-
-```dart
-try {
-  final response = await _apiService.get(...);
-  if (response.success) {
-    // Handle success
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(response.message ?? 'Error')),
-    );
-  }
-} catch (e) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Error: ${e.toString()}')),
-  );
-}
-```
-
-### UI Consistency
-
-- Primary color: `Color(0xFFD32F2F)` (red theme)
-- Font: Google Fonts Poppins (already configured globally)
-- Spacing: Multiples of 4 or 8 (8, 12, 16, 20, etc.)
-
-## Key Files to Reference
-
-### Core Infrastructure
-
-- `lib/core/api/api_service.dart` - All HTTP logic
-- `lib/core/guards/registration_guard.dart` - Startup routing logic
-- `lib/core/storage/auth_storage.dart` - Secure token storage
-
-### Service Layer Examples
-
-- `lib/services/user_profile_service.dart` - Profile/verification APIs
-- `lib/features/registration/data/services/registration_service.dart` - Multi-step registration
-
-### ViewModel Examples
-
-- `lib/features/dashboard/presentation/viewmodels/dashboard_header_viewmodel.dart` - Clean ViewModel pattern
-- Uses ChangeNotifier, dependency injection, proper separation
-
-### Migration Reference
-
-Compare:
-
-- Old: `lib/pages/CreateRequestPage.dart` (monolithic, direct API)
-- New: `lib/features/dashboard/` (layered, separated concerns)
-
-## Testing Strategy
-
-**Current state:** No tests yet (academic project)
-**Preparation for tests:**
-
-- Inject dependencies (ApiService, storage) into services
-- Use abstract repository interfaces in domain layer
-- Keep business logic in ViewModels, not widgets
-
-## Common Pitfalls
-
-### ❌ Don't
-
-- Call APIs directly from widgets (use services)
-- Store sensitive data in SharedPreferences (use AuthStorage/flutter_secure_storage)
-- Navigate with `Navigator.pushNamed` without checking auth state
-- Hardcode API URLs (use ApiConfig constants)
-- Create god widgets over 200 lines (extract widgets/viewmodels)
-
-### ✅ Do
-
-- Check user verification status before critical actions
-- Use ApiResponse wrapper for consistent error handling
-- Inject services/dependencies for testability
-- Document complex business logic with comments
-- Follow the feature-based structure for new code
-
-## External Dependencies
-
-Key packages (see pubspec.yaml):
-
-- `dio` - HTTP client (wrapped by ApiService)
-- `flutter_secure_storage` - Token storage
-- `geolocator` + `permission_handler` - Location services
-- `image_picker` - File uploads
-- `google_fonts` - Typography
-
-## Backend Integration
-
-**Base URL:** `http://110.76.128.74:8777/api/v1`
-**Auth:** Bearer token in Authorization header (auto-injected)
-**Key endpoints:** See `lib/core/api/api_config.dart` for full list
+---
+applyTo: "**"
+---
+
+# RescueNet – AI Agent Instructions
+
+You are an AI assistant working on the **RescueNet** Flutter application.
+This is a **final-year academic project** with real-world scalability goals.
+You must act as a **senior Flutter engineer + system architect**.
 
 ---
 
-**Remember:** This is an academic project under active development. Code quality and architecture matter more than speed. When in doubt, favor maintainability and clear separation of concerns.
+## 🎯 Project Goal
+
+RescueNet is an emergency response and community rescue coordination app.
+The app focuses on:
+
+- Disaster & emergency reporting
+- Role-based responders (Police, Fire, Ambulance, Volunteers)
+- Scalable, maintainable mobile architecture
+- Clean separation of concerns
+
+The codebase is expected to grow and must remain **readable, testable, and modular**.
+
+---
+
+## 🧱 Architecture Rules (MANDATORY)
+
+### 1. Feature-Based Structure
+
+Always organize code by **feature**, not by file type.
+
+✅ Correct:
+lib/features/auth/
+lib/features/rescue_requests/
+
+❌ Incorrect:
+
+lib/screens/
+lib/widgets/
+lib/services/
+
+Each feature must contain:
+
+- `data/`
+- `domain/`
+- `presentation/`
+
+---
+
+### 2. Separation of Concerns
+
+Never mix responsibilities.
+
+| Layer             | Responsibility                                   |
+| ----------------- | ------------------------------------------------ |
+| Presentation      | UI only (Widgets, Screens)                       |
+| ViewModel / State | Business logic & state                           |
+| Domain            | Entities, Use Cases, Repositories (interfaces)   |
+| Data              | API calls, DB access, repository implementations |
+
+❌ UI widgets must NOT:
+
+- Call APIs directly
+- Contain business logic
+- Manage complex state
+
+---
+
+## 🧩 State Management Rules
+
+Preferred options (in order):
+
+1. **Riverpod**
+2. **Provider + ChangeNotifier**
+
+Rules:
+
+- One ViewModel per screen
+- ViewModels must be testable
+- No `BuildContext` inside business logic
+- State must be immutable where possible
+
+---
+
+## 🧠 File Size & Complexity Rules
+
+- ❌ No file over **400 lines**
+- ❌ No widget over **200 lines**
+- ❌ No method over **40 lines**
+
+When limits are reached:
+
+- Extract widgets
+- Extract services
+- Extract helpers
+
+Large files must be **refactored**, not extended.
+
+---
+
+## 🧱 Widgets Rules
+
+### Reusable Widgets
+
+Reusable UI components must live in:
+
+lib/core/widgets/
+
+Feature-specific widgets must live in:
+
+features/<feature>/presentation/widgets/
+
+Widgets must be:
+
+- Stateless when possible
+- Dumb (no business logic)
+- Clearly named
+
+---
+
+## 🌐 Networking & Data
+
+- All API calls must be inside **data sources**
+- Repositories must expose **abstract interfaces**
+- UI must never know where data comes from (API, Firebase, Mock)
+
+Example:
+
+RescueRequestRepository (abstract)
+RescueRequestRepositoryImpl (implementation)
+
+---
+
+## 🧭 Routing Rules
+
+- Centralized routing only
+- No `Navigator.push` inside widgets
+- Use a single router file (`app/router.dart`)
+- Routes must be named and typed
+
+---
+
+## 🧪 Testing Expectations
+
+When generating code:
+
+- ViewModels must be unit-test friendly
+- Avoid static/global state
+- Prefer dependency injection
+
+---
+
+## 🧑‍💼 Code Review Standards
+
+When modifying or generating code:
+
+- Explain architectural decisions briefly
+- Prefer clarity over cleverness
+- Follow Flutter/Dart official best practices
+- Avoid over-engineering
+
+If a refactor is needed, **recommend it clearly**.
+
+---
+
+## 🚨 Forbidden Practices
+
+❌ God widgets  
+❌ Logic inside UI  
+❌ Direct API calls from screens  
+❌ Duplicate code  
+❌ Hardcoded strings (use constants)  
+❌ Tight coupling between features
+
+---
+
+## 📌 AI Behavior Expectations
+
+You must:
+
+- Think like a **senior engineer**
+- Prioritize long-term maintainability
+- Refactor instead of adding hacks
+- Respect this architecture strictly
+
+If unsure:
+➡️ Ask for clarification  
+➡️ Propose multiple clean options
+
+---
+
+## ✅ Final Reminder
+
+This project will be:
+
+- Evaluated academically
+- Reviewed for architecture quality
+- Extended in future versions
+
+**Code quality matters more than speed.**

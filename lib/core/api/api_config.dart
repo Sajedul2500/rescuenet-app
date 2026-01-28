@@ -1,7 +1,7 @@
 /// API Configuration Constants
 class ApiConfig {
   // static const String baseUrl = 'http://110.76.128.74:8777/api/v1';
-  static const String baseUrl = 'http://192.168.68.119:8000/api/v1';
+  static const String baseUrl = 'http://192.168.0.144:8000/api/v1';
 
   // Authentication Endpoints
   static const String login = '/login';
@@ -35,6 +35,8 @@ class ApiConfig {
   // More Services Endpoints
   static const String emergencyContacts = '/more-service/emergency-contacts';
   static const String nearbyVolunteers = '/more-service/nearby-volunteers';
+  static const String userOverview =
+      '/more-service/user'; // Append /{user_id}/overview
 
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
