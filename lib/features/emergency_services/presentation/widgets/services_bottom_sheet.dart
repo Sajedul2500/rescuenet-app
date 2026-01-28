@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:RescueNetBD/pages/NearByVolunteersPage.dart';
 import '../../domain/entities/emergency_service.dart';
 import '../screens/emergency_service_list_screen.dart';
 import 'service_category_tile.dart';
@@ -133,6 +134,20 @@ class ServicesBottomSheet extends StatelessWidget {
                   childAspectRatio: 0.95,
                   children: [
                     // Primary Categories
+                    ServiceCategoryTile(
+                      icon: Icons.people,
+                      label: 'Nearby Volunteers',
+                      iconColor: Colors.orange[700],
+                      onTap: () {
+                        Navigator.pop(context); // Close bottom sheet first
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NearByVolunteersPage(),
+                          ),
+                        );
+                      },
+                    ),
                     ServiceCategoryTile(
                       icon: Icons.local_police,
                       label: 'Police Stations',

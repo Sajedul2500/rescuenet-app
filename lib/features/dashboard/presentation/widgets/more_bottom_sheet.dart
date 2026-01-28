@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:RescueNetBD/pages/HelpRequestHistoryPage.dart';
-import 'package:RescueNetBD/pages/NearByVolunteersPage.dart';
 // import 'package:RescueNetBD/pages/NearByRequestPage.dart';
 import 'package:RescueNetBD/pages/EmergencyContactPage.dart';
 import 'package:RescueNetBD/pages/AlertPage.dart';
@@ -128,15 +127,6 @@ class MoreBottomSheet extends StatelessWidget {
                       onTap: () => _navigateToPage(
                         context,
                         const HelpRequestHistoryPage(),
-                      ),
-                    ),
-                    MoreMenuItem(
-                      icon: Icons.people,
-                      label: 'Nearby Volunteers',
-                      iconColor: Colors.orange,
-                      onTap: () => _navigateToPage(
-                        context,
-                        const NearByVolunteersPage(),
                       ),
                     ),
                     // MoreMenuItem(
