@@ -21,6 +21,7 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
   double? _currentLatitude;
   double? _currentLongitude;
   double _radiusKm = 5.0; // Default 5 km
+  bool _isCurrentUserVerified = false;
 
   @override
   void initState() {
@@ -29,9 +30,24 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
   }
 
   Future<void> _initialize() async {
+    await _checkVerificationStatus();
     await _getLocation();
     if (_currentLatitude != null && _currentLongitude != null) {
       await _loadVolunteers();
+    }
+  }
+
+  Future<void> _checkVerificationStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isVerified = prefs.getBool('is_verified') ?? false;
+      setState(() {
+        _isCurrentUserVerified = isVerified;
+      });
+    } catch (e) {
+      setState(() {
+        _isCurrentUserVerified = false;
+      });
     }
   }
 
@@ -457,7 +473,9 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
                       const SizedBox(height: 4),
                       if (user?.phone != null)
                         Text(
-                          user!.phone!,
+                          _isCurrentUserVerified
+                              ? user!.phone!
+                              : '•••• •••• ••• (Verify to view)',
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             color: Colors.grey[700],
@@ -511,7 +529,7 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: user?.phone != null
+                onPressed: user?.phone != null && _isCurrentUserVerified
                     ? () async {
                         final phoneNumber =
                             user!.phone!.replaceAll(RegExp(r'[^0-9+]'), '');

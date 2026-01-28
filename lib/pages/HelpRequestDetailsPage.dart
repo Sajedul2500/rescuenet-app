@@ -27,6 +27,7 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _hasCurrentUserFlagged = false;
+  bool _isCurrentUserVerified = false;
 
   @override
   void initState() {
@@ -62,9 +63,22 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
         // Check if current user has flagged
         final hasFlagged = await _checkIfUserFlagged(response.data!);
 
+        // Check if current user is verified
+        bool isVerified = false;
+        try {
+          final profileResponse = await _profileService.getProfile();
+          if (profileResponse.success && profileResponse.data != null) {
+            isVerified = profileResponse.data!.isVerified;
+          }
+        } catch (e) {
+          // If profile check fails, assume not verified
+          isVerified = false;
+        }
+
         setState(() {
           _detailData = response.data;
           _hasCurrentUserFlagged = hasFlagged;
+          _isCurrentUserVerified = isVerified;
           _isLoading = false;
         });
       } else {
@@ -201,7 +215,9 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
                     _buildInfoRow(
                       Icons.phone,
                       'Phone',
-                      _detailData!.requestedUser.phone,
+                      _isCurrentUserVerified
+                          ? _detailData!.requestedUser.phone
+                          : '•••• •••• ••• (Verify to view)',
                     ),
                     _buildInfoRow(
                       Icons.access_time,
