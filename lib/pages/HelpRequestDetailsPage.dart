@@ -213,6 +213,29 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
                       'Status',
                       _detailData!.status,
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showUserOverviewDialog(),
+                        icon: const Icon(Icons.info_outline, size: 18),
+                        label: Text(
+                          'View User Overview',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: color,
+                          side: BorderSide(color: color),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
 
@@ -1039,144 +1062,148 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              const Icon(Icons.flag, color: Colors.orange),
-              const SizedBox(width: 12),
-              Text(
-                'Report Issue',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (builderContext, setState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
               children: [
+                const Icon(Icons.flag, color: Colors.orange),
+                const SizedBox(width: 12),
                 Text(
-                  'Help us maintain quality by reporting issues with this request.',
+                  'Report Issue',
                   style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.grey[600],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Report Type *',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedType,
-                      isExpanded: true,
-                      items: reportTypes.map((type) {
-                        return DropdownMenuItem(
-                          value: type,
-                          child: Text(
-                            type,
-                            style: GoogleFonts.poppins(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedType = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Reason *',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: reasonController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'Describe the issue...',
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: Colors.grey[400],
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.all(12),
-                  ),
-                  style: GoogleFonts.poppins(fontSize: 14),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                if (reasonController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Please provide a reason for flagging',
-                        style: GoogleFonts.poppins(),
-                      ),
-                      backgroundColor: Colors.orange,
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Help us maintain quality by reporting issues with this request.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey[600],
                     ),
-                  );
-                  return;
-                }
-                Navigator.pop(context);
-                await _submitFlagReport(
-                    selectedType, reasonController.text.trim());
-              },
-              icon: const Icon(Icons.send, size: 18),
-              label: Text(
-                'Submit',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Report Type *',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedType,
+                        isExpanded: true,
+                        items: reportTypes.map((type) {
+                          return DropdownMenuItem(
+                            value: type,
+                            child: Text(
+                              type,
+                              style: GoogleFonts.poppins(fontSize: 14),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedType = value!;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Reason *',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'Describe the issue...',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.grey[400],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (reasonController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(builderContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Please provide a reason for flagging',
+                          style: GoogleFonts.poppins(),
+                        ),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(dialogContext);
+                  await _submitFlagReport(
+                      selectedType, reasonController.text.trim());
+                },
+                icon: const Icon(Icons.send, size: 18),
+                label: Text(
+                  'Submit',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1195,6 +1222,7 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
         requestId: widget.request.id,
         reportType: reportType,
         reportReason: reportReason,
+        reportAttachment: null,
       );
 
       if (mounted) Navigator.pop(context);
@@ -1293,6 +1321,20 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
                       isExpanded: true,
                       items: [
                         DropdownMenuItem(
+                          value: 'assistance_provided',
+                          child: Text(
+                            'Assistance Provided',
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'transferred_to_authorities',
+                          child: Text(
+                            'Transferred to Authorities',
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        ),
+                        DropdownMenuItem(
                           value: 'acknowledged',
                           child: Text(
                             'Acknowledged',
@@ -1310,6 +1352,13 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
                           value: 'arrived',
                           child: Text(
                             'Arrived at Location',
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'false_alarm',
+                          child: Text(
+                            'False Alarm',
                             style: GoogleFonts.poppins(fontSize: 14),
                           ),
                         ),
@@ -1512,6 +1561,339 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
           ),
         );
       }
+    }
+  }
+
+  void _showUserOverviewDialog() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+
+    try {
+      // Fetch user overview
+      final response = await _dashboardService.getUserOverview(
+        _detailData!.requestedUser.id,
+      );
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      if (response.success && response.data != null) {
+        final overview = response.data!;
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFFD32F2F).withOpacity(0.1),
+                    child: const Icon(
+                      Icons.person,
+                      color: Color(0xFFD32F2F),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _detailData!.requestedUser.name,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'User Overview',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Statistics
+                    _buildStatCard(
+                      'Member Since',
+                      _formatDate(overview.registeredSince),
+                      Icons.calendar_today,
+                      Colors.blue,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            'Requests Made',
+                            overview.totalRequestsMade.toString(),
+                            Icons.help_outline,
+                            Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Responded',
+                            overview.totalRespondToOthers.toString(),
+                            Icons.check_circle_outline,
+                            Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildStatCard(
+                      'Reported Requests',
+                      overview.reportedRequestsOwn.toString(),
+                      Icons.flag_outlined,
+                      Colors.red,
+                    ),
+
+                    // Recent Requests
+                    if (overview.lastThreeHelpRequests.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        'Recent Help Requests',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Divider(height: 16),
+                      ...overview.lastThreeHelpRequests.map(
+                        (request) => _buildRecentRequestItem(request),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD32F2F),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to load user overview',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        // Show more detailed error message for 404
+        final errorMessage = e.toString().contains('404')
+            ? 'User overview feature is not yet available on the server.\nEndpoint: /api/v1/more-service/user/{user_id}/overview\nPlease ensure the backend API is implemented.'
+            : 'Error loading user overview: ${e.toString()}';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMessage,
+              style: GoogleFonts.poppins(fontSize: 12),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentRequestItem(dynamic request) {
+    final type = request['type'] ?? 'Unknown';
+    final status = request['status'] ?? 'Unknown';
+    final description = request['description'] ?? 'No description';
+    final createdAt = request['created_at'] ?? '';
+
+    Color statusColor = Colors.grey;
+    if (status == 'completed') {
+      statusColor = Colors.green;
+    } else if (status == 'cancelled') {
+      statusColor = Colors.red;
+    } else if (status == 'pending') {
+      statusColor = Colors.orange;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _getCategoryIcon(type),
+                size: 18,
+                color: _getCategoryColor(type),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  type.toUpperCase(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getCategoryColor(type),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.grey[700],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatDate(createdAt),
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else if (difference.inDays < 30) {
+        final weeks = (difference.inDays / 7).floor();
+        return '$weeks week${weeks > 1 ? "s" : ""} ago';
+      } else if (difference.inDays < 365) {
+        final months = (difference.inDays / 30).floor();
+        return '$months month${months > 1 ? "s" : ""} ago';
+      } else {
+        final years = (difference.inDays / 365).floor();
+        return '$years year${years > 1 ? "s" : ""} ago';
+      }
+    } catch (e) {
+      return dateString;
     }
   }
 

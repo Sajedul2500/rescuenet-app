@@ -176,7 +176,8 @@ class DashboardService {
         },
       );
 
-      if (response.statusCode == 200 && response.data != null) {
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data != null) {
         final fullData = response.data as Map<String, dynamic>;
         return ApiResponse.success(
           fullData,
@@ -193,6 +194,75 @@ class DashboardService {
       print('❌ Submit flag report error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
+  }
+
+  /// Get user overview
+  Future<ApiResponse<UserOverview>> getUserOverview(int userId) async {
+    try {
+      final token = await _authStorage.getToken();
+
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ));
+
+      final response =
+          await dio.get('${ApiConfig.userOverview}/$userId/overview');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final fullData = response.data as Map<String, dynamic>;
+        final data = fullData['data'] as Map<String, dynamic>;
+
+        final userOverview = UserOverview.fromJson(data);
+        return ApiResponse.success(
+          userOverview,
+          message: fullData['message'] as String?,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          'Failed to fetch user overview',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      print('❌ User overview fetch error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+}
+
+/// User Overview Model
+class UserOverview {
+  final String registeredSince;
+  final int totalRequestsMade;
+  final int totalRespondToOthers;
+  final int reportedRequestsOwn;
+  final List<dynamic> lastThreeHelpRequests;
+
+  UserOverview({
+    required this.registeredSince,
+    required this.totalRequestsMade,
+    required this.totalRespondToOthers,
+    required this.reportedRequestsOwn,
+    required this.lastThreeHelpRequests,
+  });
+
+  factory UserOverview.fromJson(Map<String, dynamic> json) {
+    final overview = json['user_overview'] as Map<String, dynamic>;
+    final requests = json['last_three_help_requests'] as List? ?? [];
+
+    return UserOverview(
+      registeredSince: overview['registered_since'] as String,
+      totalRequestsMade: overview['total_requests_made'] as int,
+      totalRespondToOthers: overview['total_respond_to_others'] as int,
+      reportedRequestsOwn: overview['reported_requests_own'] as int,
+      lastThreeHelpRequests: requests,
+    );
   }
 }
 
@@ -434,13 +504,15 @@ class HelpRequestDetail {
 }
 
 class RequestedUser {
+  final int id;
   final String name;
   final String phone;
 
-  RequestedUser({required this.name, required this.phone});
+  RequestedUser({required this.id, required this.name, required this.phone});
 
   factory RequestedUser.fromJson(Map<String, dynamic> json) {
     return RequestedUser(
+      id: json['id'] as int? ?? json['user_id'] as int? ?? 0,
       name: json['name']?.toString() ?? 'Unknown',
       phone: json['phone']?.toString() ?? 'N/A',
     );
