@@ -21,3 +21,10 @@ ios/Flutter/*.framework
 
 # Logs
 *.log
+
+# Generated files
+lib/l10n/
+generated_plugin_registrant.dart
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
