@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/more_service.dart';
+import '../services/user_profile_service.dart';
 
 class NearByVolunteersPage extends StatefulWidget {
   const NearByVolunteersPage({super.key});
@@ -15,6 +16,7 @@ class NearByVolunteersPage extends StatefulWidget {
 
 class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
   final MoreService _moreService = MoreService();
+  final UserProfileService _profileService = UserProfileService();
   List<NearbyVolunteer> _volunteers = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -39,11 +41,16 @@ class _NearByVolunteersPageState extends State<NearByVolunteersPage> {
 
   Future<void> _checkVerificationStatus() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final isVerified = prefs.getBool('is_verified') ?? false;
-      setState(() {
-        _isCurrentUserVerified = isVerified;
-      });
+      final profileResponse = await _profileService.getProfile();
+      if (profileResponse.success && profileResponse.data != null) {
+        setState(() {
+          _isCurrentUserVerified = profileResponse.data!.isVerified;
+        });
+      } else {
+        setState(() {
+          _isCurrentUserVerified = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _isCurrentUserVerified = false;
