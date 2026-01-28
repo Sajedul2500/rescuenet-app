@@ -28,3 +28,7 @@ generated_plugin_registrant.dart
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.metadata
+.flutter-versions
+.flutter/ephemeral
+.devtools_options.yml
