@@ -4,6 +4,7 @@ import '../../domain/entities/emergency_guidance.dart';
 import '../../data/repositories/emergency_guidance_repository_impl.dart';
 import '../viewmodels/emergency_guidance_viewmodel.dart';
 import 'emergency_guidance_detail_screen.dart';
+import '../../../offline_request/presentation/pages/offline_create_request_page.dart';
 
 /// Screen displaying list of emergency guidance categories.
 /// Provides offline-first access to emergency instructions.
@@ -72,6 +73,25 @@ class _EmergencyGuidanceListScreenState
           _buildOfflineBadge(),
           Expanded(child: _buildContent()),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const OfflineCreateRequestPage(),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFFD32F2F),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'Create Request',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

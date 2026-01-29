@@ -5,8 +5,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/guards/registration_guard.dart';
 import 'core/connectivity/connectivity_wrapper.dart';
 import 'l10n/app_localizations.dart';
+import 'features/offline_request/services/background_sync_service.dart';
+import 'dart:io';
 
-void main() => runApp(const RescueNetApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize background sync service (Android only)
+  if (Platform.isAndroid) {
+    try {
+      await BackgroundSyncService().initialize();
+    } catch (e) {
+      print('Failed to initialize background sync: $e');
+    }
+  }
+
+  runApp(const RescueNetApp());
+}
 
 class RescueNetApp extends StatefulWidget {
   const RescueNetApp({super.key});
