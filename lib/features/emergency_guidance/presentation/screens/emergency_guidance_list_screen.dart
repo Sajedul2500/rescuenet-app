@@ -25,10 +25,17 @@ class _EmergencyGuidanceListScreenState
     super.initState();
     final repository = EmergencyGuidanceRepositoryImpl();
     _viewModel = EmergencyGuidanceViewModel(repository);
-    _viewModel.loadGuidance();
     _viewModel.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load guidance with current locale
+    final locale = Localizations.localeOf(context);
+    _viewModel.loadGuidance(languageCode: locale.languageCode);
   }
 
   @override

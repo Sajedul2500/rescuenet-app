@@ -12,6 +12,7 @@ class EmergencyGuidanceViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String _searchQuery = '';
+  String _currentLanguageCode = 'en';
 
   EmergencyGuidanceViewModel(this._repository);
 
@@ -23,14 +24,16 @@ class EmergencyGuidanceViewModel extends ChangeNotifier {
   bool get isEmpty => !_isLoading && _filteredGuidance.isEmpty;
   String get searchQuery => _searchQuery;
 
-  /// Load all emergency guidance
-  Future<void> loadGuidance() async {
+  /// Load all emergency guidance with language support
+  Future<void> loadGuidance({String languageCode = 'en'}) async {
+    _currentLanguageCode = languageCode;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _allGuidance = await _repository.getAllGuidance();
+      _allGuidance =
+          await _repository.getAllGuidance(languageCode: languageCode);
       _filteredGuidance = List.from(_allGuidance);
       _isLoading = false;
       notifyListeners();
@@ -41,7 +44,7 @@ class EmergencyGuidanceViewModel extends ChangeNotifier {
     }
   }
 
-  /// Search guidance by query
+  /// Search guidance by query with language support
   Future<void> searchGuidance(String query) async {
     _searchQuery = query;
 
@@ -52,7 +55,10 @@ class EmergencyGuidanceViewModel extends ChangeNotifier {
     }
 
     try {
-      _filteredGuidance = await _repository.searchGuidance(query);
+      _filteredGuidance = await _repository.searchGuidance(
+        query,
+        languageCode: _currentLanguageCode,
+      );
       notifyListeners();
     } catch (e) {
       // Keep current results on search error

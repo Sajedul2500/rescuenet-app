@@ -12,30 +12,44 @@ class EmergencyGuidanceRepositoryImpl implements EmergencyGuidanceRepository {
   }) : _offlineDataSource = offlineDataSource ?? OfflineGuidanceDataSource();
 
   @override
-  Future<List<EmergencyGuidance>> getAllGuidance() async {
+  Future<List<EmergencyGuidance>> getAllGuidance(
+      {String languageCode = 'en'}) async {
     try {
-      return await _offlineDataSource.getAllGuidance();
+      return await _offlineDataSource.getAllGuidance(
+          languageCode: languageCode);
     } catch (e) {
       throw Exception('Failed to load emergency guidance: $e');
     }
   }
 
   @override
-  Future<EmergencyGuidance?> getGuidanceByCategory(String category) async {
+  Future<EmergencyGuidance?> getGuidanceByCategory(
+    String category, {
+    String languageCode = 'en',
+  }) async {
     try {
-      return await _offlineDataSource.getGuidanceByCategory(category);
+      return await _offlineDataSource.getGuidanceByCategory(
+        category,
+        languageCode: languageCode,
+      );
     } catch (e) {
       return null;
     }
   }
 
   @override
-  Future<List<EmergencyGuidance>> searchGuidance(String query) async {
+  Future<List<EmergencyGuidance>> searchGuidance(
+    String query, {
+    String languageCode = 'en',
+  }) async {
     try {
       if (query.trim().isEmpty) {
-        return await getAllGuidance();
+        return await getAllGuidance(languageCode: languageCode);
       }
-      return await _offlineDataSource.searchGuidance(query);
+      return await _offlineDataSource.searchGuidance(
+        query,
+        languageCode: languageCode,
+      );
     } catch (e) {
       return [];
     }
