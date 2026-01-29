@@ -84,10 +84,12 @@ class _UserDashboardPageState extends State<UserDashboardPage>
 
       if (!serviceEnabled) {
         // Location service is disabled on device
-        setState(() {
-          _isLocationEnabled = false;
-          _isCheckingLocation = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLocationEnabled = false;
+            _isCheckingLocation = false;
+          });
+        }
         if (mounted) {
           _showLocationPermissionDialog();
         }
@@ -99,10 +101,12 @@ class _UserDashboardPageState extends State<UserDashboardPage>
 
       if (!permission.isGranted) {
         // App doesn't have permission (denied, permanently denied, restricted, limited)
-        setState(() {
-          _isLocationEnabled = false;
-          _isCheckingLocation = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLocationEnabled = false;
+            _isCheckingLocation = false;
+          });
+        }
         if (mounted) {
           _showLocationPermissionDialog();
         }
@@ -113,19 +117,23 @@ class _UserDashboardPageState extends State<UserDashboardPage>
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('locationEnabled', true);
 
-      setState(() {
-        _isLocationEnabled = true;
-        _isCheckingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLocationEnabled = true;
+          _isCheckingLocation = false;
+        });
+      }
 
       // Fetch current location and get place name
       _fetchLocationAndPlaceName();
     } catch (e) {
       // Handle error
-      setState(() {
-        _isLocationEnabled = false;
-        _isCheckingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLocationEnabled = false;
+          _isCheckingLocation = false;
+        });
+      }
       if (mounted) {
         _showLocationPermissionDialog();
       }
@@ -164,16 +172,20 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         print(
             'User verification status: isVerified=${_userInfo!.isVerified}, hasEmergencyContact=${_userInfo!.hasEmergencyContact}, role=${_userInfo!.role}');
       } else {
-        setState(() {
-          _isFetchingDashboard = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isFetchingDashboard = false;
+          });
+        }
         print('Failed to fetch dashboard data: ${response.message}');
       }
     } catch (e) {
       print('Error fetching dashboard data: $e');
-      setState(() {
-        _isFetchingDashboard = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isFetchingDashboard = false;
+        });
+      }
     }
   }
 
@@ -190,10 +202,12 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      setState(() {
-        _latitude = position.latitude;
-        _longitude = position.longitude;
-      });
+      if (mounted) {
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+        });
+      }
 
       // Fetch place name from OpenStreetMap
       final locationData = await GeocodingService.getPlaceFromCoordinates(
@@ -236,17 +250,21 @@ class _UserDashboardPageState extends State<UserDashboardPage>
         // Fetch dashboard data
         _fetchDashboardData();
       } else {
-        setState(() {
-          _placeName = 'Location unavailable';
-          _isFetchingPlaceName = false;
-        });
+        if (mounted) {
+          setState(() {
+            _placeName = 'Location unavailable';
+            _isFetchingPlaceName = false;
+          });
+        }
       }
     } catch (e) {
       print('Error fetching location: $e');
-      setState(() {
-        _placeName = 'Unable to fetch location';
-        _isFetchingPlaceName = false;
-      });
+      if (mounted) {
+        setState(() {
+          _placeName = 'Unable to fetch location';
+          _isFetchingPlaceName = false;
+        });
+      }
     }
   }
 
@@ -268,16 +286,18 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           _weatherData = weather;
           _isFetchingWeather = false;
         });
-      } else {
+      } else if (mounted) {
         setState(() {
           _isFetchingWeather = false;
         });
       }
     } catch (e) {
       print('Error fetching weather: $e');
-      setState(() {
-        _isFetchingWeather = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isFetchingWeather = false;
+        });
+      }
     }
   }
 
@@ -551,9 +571,11 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           await prefs.setString('userLocation',
               'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}');
 
-          setState(() {
-            _isLocationEnabled = true;
-          });
+          if (mounted) {
+            setState(() {
+              _isLocationEnabled = true;
+            });
+          }
 
           // Close dialog
           Navigator.of(dialogContext).pop();
@@ -583,9 +605,11 @@ class _UserDashboardPageState extends State<UserDashboardPage>
           await prefs.setBool('locationEnabled', true);
           await prefs.setString('userLocation', 'Location permission granted');
 
-          setState(() {
-            _isLocationEnabled = true;
-          });
+          if (mounted) {
+            setState(() {
+              _isLocationEnabled = true;
+            });
+          }
 
           Navigator.of(dialogContext).pop();
         }
