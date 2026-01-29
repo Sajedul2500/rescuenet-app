@@ -37,6 +37,7 @@ class _EmergencyContactsPageState extends State<EmergencyContactPage> {
   }
 
   Future<void> _loadContacts() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -46,21 +47,27 @@ class _EmergencyContactsPageState extends State<EmergencyContactPage> {
       final response = await _moreService.getEmergencyContacts();
 
       if (response.success && response.data != null) {
-        setState(() {
-          _contacts = response.data!;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _contacts = response.data!;
+            _isLoading = false;
+          });
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = response.message ?? 'Failed to load contacts';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _errorMessage = response.message ?? 'Failed to load contacts';
+          _errorMessage = 'Error: $e';
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error: $e';
-        _isLoading = false;
-      });
     }
   }
 

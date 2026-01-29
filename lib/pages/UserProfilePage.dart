@@ -52,6 +52,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _loadUserData() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingProfile = true;
     });
@@ -121,6 +122,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!mounted) return;
     setState(() {
       _isSavingProfile = true;
     });
@@ -142,39 +144,43 @@ class _UserProfilePageState extends State<UserProfilePage> {
       if (!mounted) return;
 
       if (response.success) {
-        setState(() {
-          _userProfile = response.data;
-          _isSavingProfile = false;
-        });
+        if (mounted) {
+          setState(() {
+            _userProfile = response.data;
+            _isSavingProfile = false;
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  response.message ?? 'Profile updated successfully!',
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    response.message ?? 'Profile updated successfully!',
+                    style: GoogleFonts.poppins(),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
+        }
       } else {
-        setState(() {
-          _isSavingProfile = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response.message ?? 'Failed to update profile',
-              style: GoogleFonts.poppins(),
+        if (mounted) {
+          setState(() {
+            _isSavingProfile = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to update profile',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -197,6 +203,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _changePassword() async {
     if (!_passwordFormKey.currentState!.validate()) return;
 
+    if (!mounted) return;
     setState(() {
       _isChangingPassword = true;
     });
@@ -211,42 +218,46 @@ class _UserProfilePageState extends State<UserProfilePage> {
       if (!mounted) return;
 
       if (response.success) {
-        setState(() {
-          _isChangingPassword = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isChangingPassword = false;
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  response.message ?? 'Password changed successfully!',
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    response.message ?? 'Password changed successfully!',
+                    style: GoogleFonts.poppins(),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
 
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
+          _currentPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+        }
       } else {
-        setState(() {
-          _isChangingPassword = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response.message ?? 'Failed to change password',
-              style: GoogleFonts.poppins(),
+        if (mounted) {
+          setState(() {
+            _isChangingPassword = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to change password',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -309,13 +320,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
       );
 
       if (image != null) {
-        setState(() {
-          if (type == 'front') {
-            _nidFrontImage = image.path;
-          } else if (type == 'selfie') {
-            _selfieWithNidImage = image.path;
-          }
-        });
+        if (mounted) {
+          setState(() {
+            if (type == 'front') {
+              _nidFrontImage = image.path;
+            } else if (type == 'selfie') {
+              _selfieWithNidImage = image.path;
+            }
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -333,6 +346,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   void _removeImage(String type) {
+    if (!mounted) return;
     setState(() {
       if (type == 'front') {
         _nidFrontImage = null;
@@ -354,6 +368,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isSubmittingVerification = true;
     });
@@ -367,41 +382,45 @@ class _UserProfilePageState extends State<UserProfilePage> {
       if (!mounted) return;
 
       if (response.success) {
-        setState(() {
-          _isSubmittingVerification = false;
-          if (response.data != null) {
-            _isVerified = response.data!.isVerified;
-          }
-        });
+        if (mounted) {
+          setState(() {
+            _isSubmittingVerification = false;
+            if (response.data != null) {
+              _isVerified = response.data!.isVerified;
+            }
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  response.message ?? 'Verification documents submitted!',
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    response.message ?? 'Verification documents submitted!',
+                    style: GoogleFonts.poppins(),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
+        }
       } else {
-        setState(() {
-          _isSubmittingVerification = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response.message ?? 'Failed to submit verification',
-              style: GoogleFonts.poppins(),
+        if (mounted) {
+          setState(() {
+            _isSubmittingVerification = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Failed to submit verification',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

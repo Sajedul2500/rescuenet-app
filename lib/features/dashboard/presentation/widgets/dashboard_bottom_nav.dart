@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:RescueNetBD/pages/CreateRequestPage.dart';
 import 'package:RescueNetBD/pages/HelpRequestHistoryPage.dart';
 import 'package:RescueNetBD/pages/NotificationPage.dart';
 import 'package:RescueNetBD/services/notification_service.dart';
+import 'package:RescueNetBD/features/offline_request/presentation/pages/offline_create_request_page.dart';
 import 'more_bottom_sheet.dart';
 import '../../../emergency_services/presentation/widgets/services_bottom_sheet.dart';
 
@@ -39,13 +41,16 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
   Future<void> _loadUnreadCount() async {
     final response = await _notificationService.getUnreadCount();
     if (response.success && response.data != null) {
-      setState(() {
-        _unreadCount = response.data as int;
-      });
+      if (mounted) {
+        setState(() {
+          _unreadCount = response.data as int;
+        });
+      }
     }
   }
 
   void _navigateToPage(Widget page, int index) {
+    if (!mounted) return;
     setState(() {
       _currentIndex = index;
     });
@@ -56,6 +61,7 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
   }
 
   void _showNearbyHelp() {
+    if (!mounted) return;
     setState(() {
       _currentIndex = 1;
     });
@@ -81,6 +87,7 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
   }
 
   void _showMoreOptions() {
+    if (!mounted) return;
     setState(() {
       _currentIndex = 4;
     });
@@ -113,6 +120,7 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
                 showBadge: _unreadCount > 0,
                 badgeCount: _unreadCount,
                 onTap: () {
+                  if (!mounted) return;
                   setState(() {
                     _currentIndex = 0;
                   });
@@ -223,16 +231,50 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
 
   Widget _buildCenterFAB() {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        if (!mounted) return;
         setState(() {
           _currentIndex = 2;
         });
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CreateRequestPage(),
-          ),
-        );
+
+        // Check connectivity and navigate to appropriate page
+        try {
+          final connectivity = await Connectivity().checkConnectivity();
+          final isOnline = connectivity.any((result) =>
+              result == ConnectivityResult.wifi ||
+              result == ConnectivityResult.mobile ||
+              result == ConnectivityResult.ethernet);
+
+          if (mounted) {
+            if (isOnline) {
+              // Navigate to online request page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateRequestPage(),
+                ),
+              );
+            } else {
+              // Navigate to offline request page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OfflineCreateRequestPage(),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          // On error, default to online page
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateRequestPage(),
+              ),
+            );
+          }
+        }
       },
       child: Container(
         width: 55,
@@ -261,6 +303,195 @@ class _DashboardBottomNavState extends State<DashboardBottomNav> {
               size: 28,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showRequestTypeSelection() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Create Emergency Request',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Choose how you want to send your emergency request',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Online request option
+              _buildRequestOption(
+                context: context,
+                icon: Icons.cloud_upload,
+                iconColor: const Color(0xFFD32F2F),
+                title: 'Online Request',
+                description: 'Full features with images and videos',
+                onTap: () {
+                  Navigator.pop(context);
+                  if (!mounted) return;
+                  setState(() {
+                    _currentIndex = 2;
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateRequestPage(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              // Offline request option
+              _buildRequestOption(
+                context: context,
+                icon: Icons.offline_bolt,
+                iconColor: Colors.orange,
+                title: 'Offline Request (SMS)',
+                description: 'Works without internet • Auto-syncs later',
+                badge: 'NEW',
+                onTap: () {
+                  Navigator.pop(context);
+                  if (!mounted) return;
+                  setState(() {
+                    _currentIndex = 2;
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OfflineCreateRequestPage(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestOption({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+    String? badge,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Material(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            title,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (badge != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                badge,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios,
+                    size: 16, color: Colors.grey[400]),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -23,6 +23,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _fetchNotifications() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -34,17 +35,21 @@ class _NotificationPageState extends State<NotificationPage> {
 
     if (response.success && response.data != null) {
       final notificationsList = response.data!['data'] as List;
-      setState(() {
-        _notifications = notificationsList
-            .map((json) => NotificationItem.fromJson(json))
-            .toList();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _notifications = notificationsList
+              .map((json) => NotificationItem.fromJson(json))
+              .toList();
+          _isLoading = false;
+        });
+      }
     } else {
-      setState(() {
-        _errorMessage = response.message ?? 'Failed to load notifications';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = response.message ?? 'Failed to load notifications';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -54,19 +59,22 @@ class _NotificationPageState extends State<NotificationPage> {
     final response = await _notificationService.markAsRead(notification.id);
 
     if (response.success) {
-      setState(() {
-        final index = _notifications.indexWhere((n) => n.id == notification.id);
-        if (index != -1) {
-          _notifications[index] = NotificationItem(
-            id: notification.id,
-            type: notification.type,
-            message: notification.message,
-            isRead: true,
-            createdAt: notification.createdAt,
-            data: notification.data,
-          );
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final index =
+              _notifications.indexWhere((n) => n.id == notification.id);
+          if (index != -1) {
+            _notifications[index] = NotificationItem(
+              id: notification.id,
+              type: notification.type,
+              message: notification.message,
+              isRead: true,
+              createdAt: notification.createdAt,
+              data: notification.data,
+            );
+          }
+        });
+      }
     }
   }
 
@@ -94,11 +102,11 @@ class _NotificationPageState extends State<NotificationPage> {
         await _notificationService.deleteNotification(notification.id);
 
     if (response.success) {
-      setState(() {
-        _notifications.removeWhere((n) => n.id == notification.id);
-      });
-
       if (mounted) {
+        setState(() {
+          _notifications.removeWhere((n) => n.id == notification.id);
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -142,6 +150,7 @@ class _NotificationPageState extends State<NotificationPage> {
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
               if (value == 'filter') {
+                if (!mounted) return;
                 setState(() {
                   _showUnreadOnly = !_showUnreadOnly;
                   _fetchNotifications();
