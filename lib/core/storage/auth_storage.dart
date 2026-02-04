@@ -11,7 +11,13 @@ class AuthStorage {
   final FlutterSecureStorage _storage;
 
   AuthStorage({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(
+                encryptedSharedPreferences: true,
+                resetOnError: true,
+              ),
+            );
 
   /// Save authentication token
   Future<void> saveToken(String token) async {
@@ -20,56 +26,125 @@ class AuthStorage {
 
   /// Get authentication token
   Future<String?> getToken() async {
-    return await _storage.read(key: _keyToken);
+    try {
+      return await _storage.read(key: _keyToken);
+    } catch (e) {
+      // Handle decryption errors by clearing corrupted data
+      print('Error reading token from secure storage: $e');
+      await _handleStorageError();
+      return null;
+    }
   }
 
   /// Save registration token (used for multi-step registration)
   Future<void> saveRegistrationToken(String token) async {
-    await _storage.write(key: _keyRegistrationToken, value: token);
+    try {
+      await _storage.write(key: _keyRegistrationToken, value: token);
+    } catch (e) {
+      print('Error saving registration token: $e');
+      await _handleStorageError();
+      rethrow;
+    }
   }
 
   /// Get registration token
   Future<String?> getRegistrationToken() async {
-    return await _storage.read(key: _keyRegistrationToken);
+    try {
+      return await _storage.read(key: _keyRegistrationToken);
+    } catch (e) {
+      print('Error reading registration token: $e');
+      await _handleStorageError();
+      return null;
+    }
   }
 
   /// Save user ID
   Future<void> saveUserId(String userId) async {
-    await _storage.write(key: _keyUserId, value: userId);
+    try {
+      await _storage.write(key: _keyUserId, value: userId);
+    } catch (e) {
+      print('Error saving user ID: $e');
+      await _handleStorageError();
+      rethrow;
+    }
   }
 
   /// Get user ID
   Future<String?> getUserId() async {
-    return await _storage.read(key: _keyUserId);
+    try {
+      return await _storage.read(key: _keyUserId);
+    } catch (e) {
+      print('Error reading user ID: $e');
+      await _handleStorageError();
+      return null;
+    }
   }
 
   /// Check if user is authenticated
   Future<bool> isAuthenticated() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
+    try {
+      final token = await getToken();
+      return token != null && token.isNotEmpty;
+    } catch (e) {
+      print('Error checking authentication: $e');
+      return false;
+    }
   }
 
   /// Mark registration as complete
   Future<void> markRegistrationComplete() async {
-    await _storage.write(key: _keyRegistrationComplete, value: 'true');
+    try {
+      await _storage.write(key: _keyRegistrationComplete, value: 'true');
+    } catch (e) {
+      print('Error marking registration complete: $e');
+      await _handleStorageError();
+      rethrow;
+    }
   }
 
   /// Check if registration is complete
   Future<bool> isRegistrationComplete() async {
-    final value = await _storage.read(key: _keyRegistrationComplete);
-    return value == 'true';
+    try {
+      final value = await _storage.read(key: _keyRegistrationComplete);
+      return value == 'true';
+    } catch (e) {
+      print('Error checking registration status: $e');
+      await _handleStorageError();
+      return false;
+    }
   }
 
   /// Clear all authentication data
   Future<void> clearAuth() async {
-    await _storage.delete(key: _keyToken);
-    await _storage.delete(key: _keyRegistrationToken);
-    await _storage.delete(key: _keyUserId);
-    await _storage.delete(key: _keyRegistrationComplete);
+    try {
+      await _storage.delete(key: _keyToken);
+      await _storage.delete(key: _keyRegistrationToken);
+      await _storage.delete(key: _keyUserId);
+      await _storage.delete(key: _keyRegistrationComplete);
+    } catch (e) {
+      print('Error clearing auth data: $e');
+      // If delete fails, try to delete all
+      await _handleStorageError();
+    }
   }
 
   /// Clear only registration status (keep token for resume)
   Future<void> clearRegistrationStatus() async {
-    await _storage.delete(key: _keyRegistrationComplete);
+    try {
+      await _storage.delete(key: _keyRegistrationComplete);
+    } catch (e) {
+      print('Error clearing registration status: $e');
+      await _handleStorageError();
+    }
+  }
+
+  /// Handle storage errors by clearing all data
+  Future<void> _handleStorageError() async {
+    try {
+      await _storage.deleteAll();
+      print('Cleared all secure storage due to error');
+    } catch (e) {
+      print('Failed to clear secure storage: $e');
+    }
   }
 }
