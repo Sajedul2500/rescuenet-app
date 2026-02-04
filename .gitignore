@@ -1,7 +1,34 @@
-# Project exclude paths
-/.dart_tool/
-/build/
-/build/app/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
-/build/path_provider_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
-/build/shared_preferences_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
-/build/url_launcher_android/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
+# Flutter / Dart
+.dart_tool/
+build/
+.pub-cache/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android
+android/.gradle/
+android/local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/*.framework
+
+# Logs
+*.log
+
+# Generated files
+lib/l10n/
+generated_plugin_registrant.dart
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.metadata
+.flutter-versions
+.flutter/ephemeral
+.devtools_options.yml

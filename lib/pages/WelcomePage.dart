@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'LoginPage.dart';
+import '../features/onboarding/domain/onboarding_service.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -9,8 +10,10 @@ class WelcomePage extends StatefulWidget {
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
-class _WelcomePageState extends State<WelcomePage> with TickerProviderStateMixin {
+class _WelcomePageState extends State<WelcomePage>
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
+  final OnboardingService _onboardingService = OnboardingService();
 
   late final Animation<double> _logoScale;
   late final Animation<double> _logoOpacity;
@@ -44,7 +47,8 @@ class _WelcomePageState extends State<WelcomePage> with TickerProviderStateMixin
       ),
     );
 
-    _titleOffset = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
+    _titleOffset =
+        Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.3, 0.45, curve: Curves.easeOut),
@@ -58,7 +62,8 @@ class _WelcomePageState extends State<WelcomePage> with TickerProviderStateMixin
       ),
     );
 
-    _subtitleOffset = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
+    _subtitleOffset =
+        Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.48, 0.63, curve: Curves.easeOut),
@@ -159,11 +164,18 @@ class _WelcomePageState extends State<WelcomePage> with TickerProviderStateMixin
                         width: screenWidth * 0.7,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginPage()),
-                            );
+                          onPressed: () async {
+                            // Mark onboarding as completed
+                            await _onboardingService.markOnboardingCompleted();
+
+                            // Navigate to login page
+                            if (mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const LoginPage()),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD32F2F),
