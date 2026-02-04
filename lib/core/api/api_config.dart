@@ -1,7 +1,6 @@
 /// API Configuration Constants
 class ApiConfig {
-  // static const String baseUrl = 'http://110.76.128.74:8777/api/v1';
-  static const String baseUrl = 'http://192.168.0.144:8000/api/v1';
+  static const String baseUrl = 'http://YOUR_API_URL/api/v1';
 
   // Authentication Endpoints
   static const String login = '/login';
