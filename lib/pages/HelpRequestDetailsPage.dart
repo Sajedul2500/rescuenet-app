@@ -4,6 +4,8 @@ import 'package:RescueNetBD/features/dashboard/data/services/dashboard_service.d
 import 'package:RescueNetBD/services/user_profile_service.dart';
 import 'package:RescueNetBD/pages/UserProfilePage.dart';
 import 'package:RescueNetBD/core/storage/auth_storage.dart';
+import 'package:RescueNetBD/features/resource_sharing/data/local/resource_share_history_storage.dart';
+import 'package:RescueNetBD/features/resource_sharing/domain/models/resource_share_history_item.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +25,8 @@ class _HelpRequestDetailsPageState extends State<HelpRequestDetailsPage> {
   final DashboardService _dashboardService = DashboardService();
   final UserProfileService _profileService = UserProfileService();
   final AuthStorage _authStorage = AuthStorage();
+  final ResourceShareHistoryStorage _shareHistoryStorage =
+      ResourceShareHistoryStorage();
   HelpRequestDetail? _detailData;
   bool _isLoading = true;
   String? _errorMessage;
@@ -1986,6 +1990,15 @@ $locationText
       await Share.share(
         shareText,
         subject: 'Emergency Help Request - $requestType',
+      );
+
+      await _shareHistoryStorage.saveShare(
+        ResourceShareHistoryItem(
+          requestType: requestType,
+          requestedBy: userName,
+          location: locationText,
+          sharedAt: DateTime.now(),
+        ),
       );
     } catch (e) {
       if (mounted) {
